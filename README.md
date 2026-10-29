@@ -1,7 +1,4 @@
-<<<<<<< Updated upstream
-# Soldados vs Zumbis — 1.3.1
-=======
-# Soldados vs Zumbis — 1.5.3
+# Soldados vs Zumbis — 1.0
 
 Para enviar alterações ao GitHub, siga o [passo a passo de Git](docs/GITHUB_PASSO_A_PASSO.md).
 >>>>>>> Stashed changes
