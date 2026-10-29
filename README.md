@@ -1,91 +1,114 @@
-# Soldados vs Zumbis — 1.0
+﻿🧟‍♂️ Soldados vs Zumbis
+==================
 
-Para enviar alterações ao GitHub, siga o [passo a passo de Git](docs/GITHUB_PASSO_A_PASSO.md).
->>>>>>> Stashed changes
+O Soldados vs Zumbis e um jogo de estrategia 2D em tempo real no estilo Tower Defense tatico desenvolvido em Python. O projeto utiliza o motor Pygame-CE para gerenciamento de janelas, entrada de usuario e audio, integrado a um pipeline de renderizacao customizado via PyOpenGL com suporte a iluminacao dinamica e composicao de shaders.
 
-Jogo de defesa por faixas para **Windows x64**. Escolha um dos três territórios, posicione tropas e sobreviva às 12 ondas de cada campanha.
+Desenvolvido como projeto do curso de Ciencia da Computacao na UNIPAC por Vinicius da Motta Campos, o jogo aplica conceitos avancados de arquitetura de software, estruturacao de game loop, deteccao de colisoes, programacao orientada a objetos e matematica computacional aplicada a jogos.
 
-## Jogar
+--------------------------------------------------
 
-Abra **SoldadosVsZumbis.exe** ou **JOGAR.bat**. Não é necessário instalar Python. Mantenha `assets/` e `_internal/` junto do executável. As instruções e os controles estão no menu **COMO JOGAR**.
+🎮 Mecanicas e Arquitetura de Gameplay
+-----------------------------------
 
-<<<<<<< Updated upstream
-O pacote para enviar a outras pessoas fica em `dist/SoldadosVsZumbis-1.3.1-Windows-x64.zip`. O destinatário deve extrair a pasta inteira e abrir o executável.
-=======
-O pacote para enviar a outras pessoas fica em `dist/SoldadosVsZumbis-1.5.3-Windows-x64.zip`. O destinatário deve extrair a pasta inteira e abrir o executável.
->>>>>>> Stashed changes
+🏠 Loop de Interface e Menu Principal
+- Gerenciamento de estados de jogo (Menu, Selecao de Fase, Gameplay, Pause, Game Over).
+- Acesso direto as configuracoes taticas, instrucoes de controle e creditos.
 
-## Organização
+🛡️ Sistema de Posicionamento Tatico (Grid 4xN)
+- Matriz de combate dividida em 4 faixas independentes de defesa.
+- Controle de posicionamento espacial de unidades com checagem de ocupacao de celula.
 
-| Caminho | Finalidade |
-|---|---|
-| `SoldadosVsZumbis.exe`, `JOGAR.bat` | Abrir o jogo |
-| `assets/` | Somente os 109 recursos usados pela versão final e seu manifesto de integridade |
-| `_internal/` | Python e bibliotecas incluídos no executável; não mover isoladamente |
-| `src/svz/` | Código-fonte organizado por responsabilidade |
-| `tests/` | Testes da versão final |
-| `tools/` | Verificação, construção e empacotamento |
-| `docs/` | Pesquisa, decisões e resultados de validação |
-| `licenses/`, `CREDITOS.md` | Avisos das bibliotecas e procedência do áudio |
-| `dist/` | ZIP para distribuição e checksum |
+🎴 Deck de Tropas e Economia de Suprimentos
+- Selecao de ate 8 cartas taticas por partida.
+- Economia baseada em suprimentos para invocacao e gerenciamento de tempo de recarga (cooldown).
 
-O progresso é salvo em `%LOCALAPPDATA%\SoldadosVsZumbis\campanha.json`; erros ficam em `jogo.log`, na mesma pasta. Esses dados pessoais não integram o ZIP.
+🌊 Motor de Ondas e Progressao de Dificuldade
+- Algoritmo de spawn incremental para controle de densidade da horda ao longo de 12 ondas.
+- Batalhas contra Subchefes e Chefes de fase com padroes comportamentais especificos.
+- Tres cenarios com identidades visuais e layouts proprios:
+  - 🏙️ Nova York (Caos Urbano): Combate urbano com barricadas e destrocos.
+  - 🏜️ Deserto do Egito (Ruinas Escaldantes): Visibilidade reduzida e tempestades de areia.
+  - 🌊 Cachoeira de Minas Gerais (Resistencia Nacional): Terreno acidentado e densa vegetacao.
 
-Para manutenção, consulte [DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md). A pesquisa e as evidências desta organização estão em [LANCAMENTO_E_VALIDACAO.md](docs/LANCAMENTO_E_VALIDACAO.md).
+🧟 Inteligencia dos Infectados e Variedade de Inimigos
+- Unidades com diferentes atributos de velocidade, vida e tipos de ataque (corredores, rastejadores, unidades blindadas e infectados explosivos).
 
-## Retomar uma partida
+💡 Pipeline de Renderizacao e Shaders (PyOpenGL)
+- Pipeline 2D hibrido utilizando PyOpenGL para aceleracao via GPU.
+- Composicao visual com suporte a transparencias, iluminacao ambiente e efeitos de luz em tempo real.
 
-Use **CONTINUAR** no menu. A partida volta pausada; clique em **PAUSA** ou pressione **P**. Funciona também após fechar e abrir o jogo. O salvamento ocorre a cada dez segundos e ao sair normalmente; iniciar outra partida exige confirmação para substituir a atual.
+--------------------------------------------------
 
-Confira a pesquisa e o funcionamento em [SALVAMENTO_E_RETOMADA.md](docs/SALVAMENTO_E_RETOMADA.md). Os documentos da versão 1.0.0 registram a organização anterior; a validação do salvamento fica em `docs/RESULTADOS_RETOMADA.json`.
+🚀 Stack Tecnologica
+------------------
 
-## Remover tropas
+| Tecnologia | Modulo / Aplicacao |
+| :--- | :--- |
+| Python 3.10+ | Linguagem base do projeto |
+| Pygame-CE (2.5.8) | Eventos, janela, input de usuario e mixagem de audio |
+| PyOpenGL (3.1.10) | Pipeline de renderizacao 2D, shaders e iluminacao |
+| NumPy (2.3.5) | Vetores, matrizes e calculos matematicos de transformacao |
+| Pytest | Suite automatizada de testes unitarios e de integracao |
+| Git / GitHub | Controle de versao e repositorio |
 
-O botão **REMOVER**, entre **PAUSA** e **PRÓXIMA**, funciona em todas as dificuldades. Clique nele e depois na casa da tropa. O atalho **R** alterna a ferramenta. A retirada devolve 35% do custo, arredondado para cima.
+--------------------------------------------------
 
-A correção e a validação da versão 1.1.1 estão em [CORRECAO_HUD.md](docs/CORRECAO_HUD.md).
+⚙️ Como Executar o Jogo
+----------------------
 
-## Tela cheia
+Opcao 1: Execucao Rapida no Windows
+1. Executar PREPARAR_AMBIENTE.bat (configura o ambiente virtual .venv e instala dependencias).
+2. Executar JOGAR.bat para abrir o jogo.
 
-Em **CONFIGURAÇÕES → VÍDEO**, clique em **TELA CHEIA**. **F11** ou **Alt+Enter** alternam entre janela e tela cheia durante o jogo. A preferência é lembrada na próxima abertura, e a partida continua preservada. A imagem mantém a proporção; outras proporções de monitor podem apresentar margens pretas.
+Opcao 2: Execucao Via Terminal
+1. Instalar as dependencias do arquivo requirements.txt:
+   pip install -r requirements.txt
 
-Pesquisa, decisões e validação: [TELA_CHEIA.md](docs/TELA_CHEIA.md).
+2. Iniciar a aplicacao:
+   py main.py
 
+--------------------------------------------------
 
-## Revisão aplicada — 1.3.0
+📦 Instalacao Manual de Dependencias
+-----------------------------------
 
-Corrigidos os nove defeitos da auditoria. As ações respeitam pausa, término e
-recarga; derrota registra a onda atingida; menus aceitam teclado; ajuda,
-dificuldade e HUD mostram as regras atuais. Configurações guardam controle,
-áudio, teclas e tamanho de texto. O jogo pausa ao perder foco por padrão.
+Caso opte por instalar manualmente no seu ambiente Python:
+pip install pygame-ce
+pip install PyOpenGL
+pip install numpy
 
-**F5** salva a partida. **F1** mostra a ficha da carta selecionada. A última
-cópia anterior do salvamento permite recuperação automática. Em Configurações,
-ative texto ampliado, ajuste os volumes separados ou personalize as teclas.
-“Movimento reduzido” desativa o tremor da tela; mantém animações e clima.
+--------------------------------------------------
 
-Documentação vigente: [CORRECOES_REVISAO_1.3.0.md](docs/CORRECOES_REVISAO_1.3.0.md).
-Os demais relatórios datados preservam o histórico e não substituem a validação
-da versão atual. O ZIP contém somente o necessário para jogar. Os fontes,
-testes, evidências e histórico local ficam na pasta de desenvolvimento.
+🧠 Engenharia e Logica de Combate
+---------------------------------
 
+Sistema de Cooldown e Invocacao
+- Cada carta de unidade consome uma quantidade de recursos taticos.
+- Posicionar uma unidade ativa o tempo de recarga (cooldown) especifico da tropa, impedindo invocacoes repetidas instantaneas.
 
-## Correção vigente — 1.3.1
+Fisica de Projeteis e Dano por Faixa
+- Os projeteis sao processados individualmente em termos de trajetoria, velocidade e valor de dano.
+- As verificacoes de colisao sao isoladas por faixa (linha do grid), otimizando a performance do loop de fisica.
 
-Os corredores avançam de frente para a base nos três mapas. Corrigida a
-inversão da corrida do deserto e a mudança de lado no meio da passada da
-cachoeira. Velocidade e combate foram preservados.
-Validação: [CORRECAO_CORREDOR_1.3.1.md](docs/CORRECAO_CORREDOR_1.3.1.md).
-<<<<<<< Updated upstream
-=======
+Comportamento dos Infectados
+- Cada tipo de inimigo implementa algoritmos de navegacao em linha reta com verificacao de obstaculo frontal.
+- Inimigos atacam tropas ao entrar no raio de contato e alteram para estado de marcha na ausencia de alvos.
 
-## Validação vigente — 1.5.3
+--------------------------------------------------
 
-Explosivos preservam o destino e a faixa mesmo sem o alvo original. Saves
-rejeitam projéteis com parâmetros inválidos; relógios rejeitam valores não
-finitos. A suíte inclui geração automática de cenários e medição de cobertura
-de linhas e ramos. Use `python -m pip install -r requirements-test-lock.txt`
-e `python tools/quality.py` no ambiente virtual de desenvolvimento.
+📌 Status de Desenvolvimento
+--------------------------
 
-Pesquisa, decisões e reprodução: [PESQUISA-E-TESTES-1.5.3.md](docs/PESQUISA-E-TESTES-1.5.3.md).
->>>>>>> Stashed changes
+Versao atual: Alfa da Beta 5 (Estavel e funcional).
+
+Recursos implementados:
+- Engine 2D com Game Loop estruturado.
+- Suporte a 3 cenarios completos de batalha.
+- Sistema de grid tatico 4xN funcional.
+- Motor de ondas com 12 niveis de progressao.
+- Batalhas de chefes com mecanicas proprias.
+- Renderizador OpenGL com iluminacao e composicao.
+- Cobertura de testes automatizados com mais de 60 verificacoes validadas.
+
+--------------------------------------------------
+
