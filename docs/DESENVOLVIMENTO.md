@@ -8,12 +8,12 @@ Na raiz do projeto:
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-build-lock.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-test-lock.txt
 .\.venv\Scripts\python.exe tools/manage.py test
 .\.venv\Scripts\python.exe main.py
 ```
 
-`requirements.txt` contém as dependências de execução. `requirements-dev.txt` acrescenta testes de imagem e empacotador. `requirements-build-lock.txt` registra todas as versões instaladas no ambiente de construção. Nenhum ambiente virtual é distribuído.
+`requirements.txt` contém as dependências de execução. `requirements-dev.txt` inclui `requirements-test-lock.txt`, com Hypothesis e Coverage.py, além das dependências de construção. `requirements-build-lock.txt` registra todas as versões instaladas no ambiente de construção. Nenhum ambiente virtual é distribuído.
 
 ## Localizar uma alteração
 
@@ -39,7 +39,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe tools/manage.py test
 .\.venv\Scripts\python.exe tools/collect_licenses.py
 .\.venv\Scripts\python.exe tools/manage.py build
-.\.venv\Scripts\python.exe tools/manage.py package --output dist/SoldadosVsZumbis-1.2.0-Windows-x64.zip
+.\.venv\Scripts\python.exe tools/manage.py package
 ```
 
 `build` executa testes antes de gerar o executável e copia o resultado para a raiz. O empacotamento seleciona apenas executável, bibliotecas, recursos, instruções e créditos; fontes e testes continuam no projeto, fora do ZIP jogável. Escolha outro nome se um ZIP já existir.
@@ -60,22 +60,21 @@ Para repetir o ensaio detalhado de telas, ondas e combates, use `python tools/re
 
 ## Controle da versão
 
-O número atual fica em `project.toml` e `src/svz/config.py`; ao lançar outra versão, altere ambos e a referência do smoke test. A suíte pode ser executada localmente ou em CI. A pasta entregue é local: esta tarefa não criou repositório, commit, tag, publicação ou assinatura digital.
+O número atual fica exclusivamente em `project.toml`; os módulos e o smoke test consultam essa origem. A suíte pode ser executada localmente ou em CI. A pasta entregue é local: esta tarefa não criou repositório, commit, tag, publicação ou assinatura digital.
 
-Guarde marcos futuros em Git/tags e releases, sem recriar árvores completas de alfas e betas dentro do projeto ativo. `.gitignore` exclui saídas regeneráveis e ambientes; `.gitattributes` mantém os grandes recursos no Git LFS. O ZIP jogável inclui os arquivos reais e não depende de baixar LFS.
+Guarde marcos futuros em Git/tags e releases, sem recriar árvores completas de alfas e betas dentro do projeto ativo. `.gitignore` exclui saídas regeneráveis e ambientes. Na linha publicada a partir do commit `994ed2e`, os recursos são binários comuns no Git; `.gitattributes` não aplica filtro LFS. O ZIP jogável inclui os arquivos reais. Consulte [GITHUB_PASSO_A_PASSO.md](GITHUB_PASSO_A_PASSO.md) para o fluxo de envio e atualização.
 
 O salvamento de partidas é descrito em SALVAMENTO_E_RETOMADA.md. Ao alterar o estado persistente, revise o schema em snapshot.py e os testes de retomada.
 
 
-## Fluxo vigente da versão 1.3.0
+## Fluxo vigente da versão 1.3.3
 
 Use Python 3.12 x64 em ambiente virtual e instale
-`requirements-build-lock.txt`. Isso é necessário apenas para desenvolver.
+`requirements-test-lock.txt`. Isso é necessário apenas para desenvolver.
 
 ```powershell
 python tools/manage.py check
-python tools/manage.py test
-python tools/benchmark.py --output reports/benchmark.json
+python tools/quality.py
 python tools/manage.py build
 python tools/manage.py package
 ```
@@ -100,3 +99,5 @@ simulados. Seus tempos não representam FPS de apresentação em monitor real.
 O fluxo `.github/workflows/windows.yml` executa testes no Windows se o projeto
 for futuramente hospedado no GitHub; não houve publicação nem execução remota.
 Os arquivos de arte são binários comuns no Git local, sem exigir Git LFS.
+
+Pesquisa e contratos de teste: [PESQUISA-E-TESTES-1.3.3.md](PESQUISA-E-TESTES-1.3.3.md). O comando `quality.py` mede ramos e linhas, verifica limites por módulo e executa regressão e benchmark com saves isolados.

@@ -13,7 +13,7 @@ DEFAULT_BINDINGS = {
 }
 ACTION_LABELS = {"up": "Mover acima", "down": "Mover abaixo", "left": "Mover à esquerda",
                  "right": "Mover à direita", "place": "Posicionar / remover",
-                 "previous": "Carta anterior", "next": "Próxima carta", "remove": "Ferramenta de remoção",
+                 "previous": "Carta anterior", "next": "Próxima carta", "remove": "Recolher tropa / voltar à base",
                  "wave": "Próxima onda", "pause": "Pausar / retomar"}
 ALIASES = {"up": (pygame.K_UP,), "down": (pygame.K_DOWN,), "left": (pygame.K_LEFT,),
            "right": (pygame.K_RIGHT,), "place": (pygame.K_f, pygame.K_SPACE), "wave": (pygame.K_TAB,)}
@@ -33,6 +33,7 @@ class Settings:
         self.auto_pause = True
         self.reduced_motion = False
         self.bindings = DEFAULT_BINDINGS.copy()
+        self.player_name = ""
         try:
             with self.path.open("rb") as f:
                 data = json.loads(f.read(16385))
@@ -42,6 +43,9 @@ class Settings:
                 return
             if data.get("control_mode") in ("mouse", "keyboard"):
                 self.control_mode = data["control_mode"]
+            player_name = data.get("player_name", "")
+            if type(player_name) is str and len(player_name.strip()) <= 20 and player_name.strip().isprintable():
+                self.player_name = player_name.strip()
             for name in ("sound", "large_text", "auto_pause", "reduced_motion"):
                 if type(data.get(name)) is bool:
                     setattr(self, name, data[name])

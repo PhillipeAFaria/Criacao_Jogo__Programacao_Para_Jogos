@@ -47,6 +47,7 @@ class Defender:
     utility_timer: float = 0.0
     reload_timer: float = 0.0
     reload_total: float = 0.0
+    tactical_ammo_timer: float = 0.0
     stun: float = 0.0
     corrosion: float = 0.0
     ascended: float = 0.0

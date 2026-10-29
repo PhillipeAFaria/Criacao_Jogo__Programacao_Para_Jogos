@@ -51,7 +51,7 @@ def howto_panel(r):
         ("1. Escolha o cenário","Cada mapa começa com oito cartas regionais. Use o mouse ou ative Teclado em Configurações."),
         ("2. Posicione e recarregue","Escolha a carta e uma casa livre. Cada colocação custa suprimentos; a carta espera 10 segundos. A recarga da arma é separada."),
         ("3. Conheça as tropas","Veja as fichas em Personagens. Passe o mouse na carta ou pressione F1 no combate. Algumas tropas rompem defesas inimigas específicas."),
-        ("4. Remova e proteja","REMOVER retira uma tropa e devolve 35% do custo. A contenção de cada faixa funciona uma vez; proteja a linha final."),
+        ("4. Recolha e proteja","VOLTAR À BASE retira uma tropa do campo e devolve 35% do custo. A contenção de cada faixa funciona uma vez; proteja a linha final."),
         ("5. Pause e retome","PAUSA congela o combate. MENU preserva a partida; CONTINUAR retoma pausado. F5 salva agora; também há salvamento automático."),
         ("6. Ondas e controles","Sobreviva a 12 ondas. Tab e setas navegam nos menus; Enter confirma. Personalize as teclas nas Configurações. F11 alterna tela cheia."),
     ]

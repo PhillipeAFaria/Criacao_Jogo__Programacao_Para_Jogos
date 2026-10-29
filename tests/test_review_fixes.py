@@ -259,7 +259,7 @@ class ReviewTests(unittest.TestCase):
         labels=[call.args[0] for call in draw.call_args_list]
         for data in DIFFICULTIES.values():
             self.assertIn(f"{data['initial_supplies']} suprimentos iniciais",labels)
-            self.assertIn("Reserva de suprimentos sem limite",labels)
+            self.assertIn(f"Limite de reserva: {data['supply_cap']}",labels)
 
     def test_first_save_after_recovery_keeps_valid_backup(self):
         b=self.battle();b.place(0,2)
@@ -282,25 +282,17 @@ class ReviewTests(unittest.TestCase):
         self.assertTrue(self.game.checkpoint())
         self.assertEqual(31,store.read_document(store.backup_path)["snapshot"]["battle"]["supplies"])
 
-    def test_hud_metrics_fit_in_two_lines_both_text_sizes(self):
+    def test_compact_hud_cost_and_tooltip_fit_both_text_sizes(self):
         for large in (False,True):
             self.game.fonts=FontBook(large)
             for region in REGIONS:
                 b=self.battle(region)
                 font=self.game.fonts.tiny
                 for (key,_),rect in zip(b.selected,b.card_rects()):
+                    # O HUD compacto mostra retrato/custo; métricas ficam na ficha.
+                    self.assertLessEqual(font.size(f"{DEFENSES[key]['cost']} SUP")[0],rect.width-8)
                     a,text=self.game.renderer.card_metrics(DEFENSES[key])
-                    self.assertLessEqual(font.size(a)[0],rect.width-46)
-                    lines=[];line=""
-                    for word in text.split():
-                        candidate=(line+" "+word).strip()
-                        if font.size(candidate)[0] > rect.width-12:
-                            lines.append(line);line=word
-                        else:line=candidate
-                    lines.append(line)
-                    self.assertLessEqual(len(lines),2,(large,key,lines))
-                    self.assertLessEqual(len(lines)*(font.get_height()+2),38)
-                    for line in lines:self.assertLessEqual(font.size(line)[0],rect.width-12)
+                    self.assertLessEqual(font.size(f"{a} • {text}")[0],454)
                 self.game.draw()
 
     def test_help_matches_eight_cards_and_resume_flow(self):

@@ -25,8 +25,6 @@ REGIONS = {
         "accent": (90, 207, 166),
         "unlock_after": None,
         "description": "Uma avenida de quarentena com quatro pistas largas de asfalto, base de emergência e ruínas tóxicas nas bordas.",
-        # Chefes voltam quando suas novas folhas forem aprovadas.
-        "bosses": (),
     },
     "desert": {
         "name": "Egito — Escavação Félix",
@@ -39,7 +37,6 @@ REGIONS = {
         "accent": (235, 179, 76),
         "unlock_after": "city",
         "description": "Quatro trilhas largas de areia compactada cruzam uma expedição militar rumo às ruínas e pirâmides antigas.",
-        "bosses": (),
     },
     "beach": {
         "name": "Minas Gerais — Cachoeira Contaminada",
@@ -52,13 +49,13 @@ REGIONS = {
         "accent": (78, 177, 232),
         "unlock_after": "desert",
         "description": "Duas trilhas terrestres e dois canais contaminados defendem a base diante da cachoeira de Minas Gerais.",
-        "bosses": (),
     },
 }
 
 
-# Catálogo legado preservado somente como dados internos. A produção ativa
-# abaixo expõe um único protótipo novo por mapa, sem níveis ou promoções.
+# Fichas de catálogo e compatibilidade herdadas. Elas preservam chaves usadas
+# pela lógica comum; o elenco jogável é definido por REGION_ROSTERS, e as
+# fichas regionais adicionais são integradas a partir de EXPANSION_DEFENDERS.
 DEFENSES = {
     "xerife_rua": {
         "base": "Xerife de Rua",
@@ -556,9 +553,9 @@ DEFENSES = {
 }
 
 
-# Os quatro novos soldados de cada região agora fazem parte da Beta 4 ativa.
-# O registro de produção continua sendo a fonte de balanceamento, mas o jogo
-# completa aqui os campos comuns usados por seleção, combate e dossiê.
+# As fichas adicionais de EXPANSION_DEFENDERS integram o catálogo utilizado
+# pelo jogo. O registro de produção fornece atributos; este merge completa
+# os campos comuns usados por seleção, combate e consulta.
 _EXPANSION_COMBAT_CLASS = {
     "sniper": 2,
     "shotgun": 2,
@@ -627,7 +624,8 @@ def weapon_reload_seconds(stats: dict, ascended: bool = False) -> float:
     return float(clamp(seconds, 8.0, 15.0))
 
 
-# O sistema de evolução foi desligado integralmente nesta reconstrução.
+# API de compatibilidade: promoção por Instrutor está desativada na 1.5.0.
+# Mantemos este símbolo vazio para consumidores e testes que ainda o importam.
 PROMOTIONS: dict[str, str] = {}
 
 
@@ -651,6 +649,7 @@ DIFFICULTIES = {
         "defender_damage": 1.18,
         "supply_gain": 1.40,
         "supply_cycle": 0.74,
+        "supply_cap": 650,
         "accent": (112, 212, 139),
         "summary": "320 SUP e começo acolhedor; a pressão cresce de forma contínua até a onda 12.",
     },
@@ -669,6 +668,7 @@ DIFFICULTIES = {
         "defender_damage": 1.00,
         "supply_gain": 1.00,
         "supply_cycle": 1.00,
+        "supply_cap": 430,
         "accent": GOLD,
         "summary": "240 SUP; início ensinável, meio exigente e reta final de alta pressão.",
     },
@@ -687,6 +687,7 @@ DIFFICULTIES = {
         "defender_damage": 0.94,
         "supply_gain": 0.86,
         "supply_cycle": 1.12,
+        "supply_cap": 330,
         "accent": RED,
         "summary": "190 SUP; dá para montar a defesa inicial, mas a onda 12 exige counters e economia.",
     },

@@ -19,7 +19,8 @@ def main() -> int:
     directory = data_dir()
     try:
         directory.mkdir(parents=True, exist_ok=True)
-        logging.basicConfig(level=logging.WARNING, handlers=[RotatingFileHandler(directory / 'jogo.log', maxBytes=1024 * 1024, backupCount=2, encoding='utf-8')])
+        logging.basicConfig(level=logging.INFO, force=True, handlers=[RotatingFileHandler(directory / 'jogo.log', maxBytes=1024 * 1024, backupCount=2, encoding='utf-8')])
+        logging.info('Inicializando Soldados vs Zumbis %s.', VERSION)
         if args.self_test:
             from .diagnostics import verify, verify_resume
             if args.resume_save:

@@ -13,10 +13,10 @@ from .content import (REGIONS, DIFFICULTIES, DEFENSES, ENEMIES, BOSSES,
 from .entities import Defender, Enemy, Projectile, Particle, FloatingText, SpawnOrder, LaneBomb
 from .motion import ActorMotion, VisualEffect
 
-SCHEMA = 2
+SCHEMA = 1
 CLASSES = {c.__name__: c for c in (Defender, Enemy, Projectile, Particle, FloatingText,
                                  SpawnOrder, LaneBomb, ActorMotion, VisualEffect)}
-EXCLUDED = {'app', 'wave_director', 'difficulty_data', 'water_rows', 'fallen'}
+EXCLUDED = {'app', 'wave_director', 'difficulty_data', 'water_rows', 'fallen', 'player_name'}
 ENTITY_EXCLUDED = {'visual_animation', 'stats', 'data'}
 ANIMATION_FIELDS = ('state', 'frame_index', 'frame_elapsed', 'finished', 'paused',
                     'playback_rate', 'loop_count')
@@ -87,12 +87,13 @@ def capture(battle):
             'random': encode(random.getstate()),
             'scenario': {k: getattr(battle.app.scenario_runtime, k) for k in SCENARIO_FIELDS},
             'scene_elapsed': battle.app.scene_elapsed,
-            'integration_preview': battle.app.integration_preview}
+            'integration_preview': battle.app.integration_preview,
+            'player_name': getattr(battle, 'player_name', getattr(battle.app, 'player_name', 'Jogador'))}
 
 
 def restore(snapshot, app):
     """Constrói fora da partida ativa e valida tudo antes de alterar a aplicação."""
-    require(type(snapshot) is dict and type(snapshot.get('schema')) is int and snapshot['schema'] in (1, SCHEMA),
+    require(type(snapshot) is dict and type(snapshot.get('schema')) is int and snapshot['schema'] == SCHEMA,
             'Formato de partida incompatível com esta versão.')
     state = snapshot.get('battle')
     records = snapshot.get('objects')
@@ -129,6 +130,9 @@ def restore(snapshot, app):
     for obj, record in zip(objects, records):
         attributes = record.get('fields')
         expected = {f.name for f in fields(obj)} - ENTITY_EXCLUDED
+        if isinstance(obj, Defender) and type(attributes) is dict and 'tactical_ammo_timer' not in attributes:
+            # Saves da Alfa anterior não continham o consumível novo.
+            attributes = {**attributes, 'tactical_ammo_timer': 0.0}
         require(type(attributes) is dict and set(attributes) == expected)
         hints = get_type_hints(type(obj))
         for name, raw in attributes.items():
@@ -146,14 +150,12 @@ def restore(snapshot, app):
             require(obj.region == state['region'] and obj.difficulty == state['difficulty'])
             require(0 <= obj.wave <= TOTAL_WAVES)
             obj.data = BOSSES.get(obj.key) or ENEMIES[obj.key]
-            if snapshot['schema'] == 1:
-                # Conserva a fração de vida dos inimigos de saves com escalada.
-                progress = min(1.0, max(0.0, (obj.wave - 1) / max(1, TOTAL_WAVES - 1)))
-                old_scale = (0.78 + 1.25 * progress ** 1.40) if obj.is_boss else (0.66 + 1.50 * progress ** 1.55)
-                obj.hp = min(obj.max_hp, obj.hp / old_scale)
         if isinstance(obj, SpawnOrder):
             require(obj.key in ENEMIES or obj.key in BOSSES)
             require(not obj.boss or obj.key in BOSSES)
+        if isinstance(obj, Projectile):
+            require(obj.travel > 0 and obj.damage >= 0 and obj.radius >= 0,
+                    'Parâmetros de projétil inválidos.')
         if isinstance(obj, LaneBomb):
             require(obj.state in ('armed', 'rolling', 'spent'))
         if isinstance(obj, (Particle, FloatingText, VisualEffect)):
@@ -168,35 +170,27 @@ def restore(snapshot, app):
                 type(item[0]) is str and item[0] in available and type(item[1]) is str for item in selected))
     # Battle.__init__ não consome aleatoriedade nem grava arquivos.
     battle = Battle(app, state['region'], selected)
-<<<<<<< Updated upstream
-=======
     # Saves anteriores à pontuação começam em zero, sem inventar abates.
     state = dict(state)
-    state.setdefault('first_wave_countdown', 0.0)
     if 'score' not in state and 'match_id' not in state:
         import hashlib, json
         state['score'] = 0
         state['match_id'] = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()[:32]
->>>>>>> Stashed changes
     expected = set(vars(battle)) - EXCLUDED
     require(set(state) == expected, 'Campos da partida incompatíveis.')
+    player_name = snapshot.get('player_name', getattr(app, 'player_name', '') or 'Jogador')
+    require(type(player_name) is str and 1 <= len(player_name.strip()) <= 20 and player_name.strip().isprintable(),
+            'Nome do jogador inválido no salvamento.')
+    battle.player_name = player_name.strip()
     for name, raw in state.items():
-        # A reserva é um inteiro sem teto; os outros campos mantêm seus limites.
-        value = raw if name == 'supplies' else decode(raw)
+        value = decode(raw)
         default = getattr(battle, name)
         if name in COLLECTIONS:
             require(type(value) is list and all(type(v) is COLLECTIONS[name] for v in value))
-<<<<<<< Updated upstream
-=======
-        elif name == 'first_wave_countdown':
-            require(typed(value, float) and 0 <= value <= 5)
-        elif name == 'supplies':
-            require(type(value) is int and value >= 0)
         elif name == 'score':
             require(type(value) is int and 0 <= value <= 10**12)
         elif name == 'match_id':
             require(type(value) is str and len(value) == 32 and all(c in '0123456789abcdef' for c in value))
->>>>>>> Stashed changes
         elif name == 'selected':
             require(value == selected)
         elif name == 'card_cooldowns':
