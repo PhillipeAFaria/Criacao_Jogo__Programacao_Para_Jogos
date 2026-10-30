@@ -1,17 +1,80 @@
-SOLDADOS VS ZUMBIS — ALFA DA BETA 5
+SOLDADOS VS ZUMBIS — VERSÃO 1.5.3
+Windows x64
 
-Este é um pacote de código-fonte para Windows com Python 3.12 x64 instalado.
+COMO JOGAR
+1. Extraia a pasta inteira do ZIP.
+2. Abra SoldadosVsZumbis.exe ou JOGAR.bat.
+3. Mantenha as pastas assets e _internal junto do executável.
 
-COMO PREPARAR E JOGAR
-1. Extraia a pasta inteira para um local de sua escolha.
-2. Execute PREPARAR_AMBIENTE.bat uma vez. Ele cria .venv e instala as dependências.
-3. Execute JOGAR.bat para iniciar o jogo.
-4. Para construir um executável com estas alterações, execute CRIAR_EXE.bat depois de preparar o ambiente.
+Não é necessário instalar Python nem baixar bibliotecas.
 
-IMPORTANTE
-- Este ZIP não inclui um executável autônomo recompilado a partir desta revisão.
-- Não mova nem apague a pasta assets; os sprites, cenários e sons são necessários.
-- Os dados de campanha e pontuação ficam em %LOCALAPPDATA%\SoldadosVsZumbis e não são apagados ao trocar os arquivos do programa.
-- Se o jogo não abrir, consulte %LOCALAPPDATA%\SoldadosVsZumbis\jogo.log e envie o conteúdo do arquivo junto com a mensagem de erro.
+Escolha a dificuldade, o território e posicione as tropas nas faixas.
+São três regiões e 12 ondas por região. As instruções completas estão no
+menu COMO JOGAR. O mouse é o controle padrão; o teclado pode ser habilitado
+em CONFIGURAÇÕES. O jogo usa renderização por software como padrão.
 
-A Alfa Beta 5 preserva a identidade do tower defense original: três regiões, defesa por faixas, campanha de 12 ondas, animações regionais, retomada de partida, ranking local e loja de consumíveis.
+PROGRESSO E REGISTROS
+O progresso fica em %LOCALAPPDATA%\SoldadosVsZumbis\campanha.json.
+O registro de erros fica na mesma pasta, em jogo.log.
+Atualizar ou extrair novamente o jogo não precisa apagar essa pasta.
+
+SE NÃO ABRIR
+Verifique se extraiu todos os arquivos, inclusive assets e _internal.
+Consulte jogo.log no local indicado acima.
+
+Créditos de áudio em CREDITOS.md; avisos das bibliotecas em licenses.
+Este pacote foi preparado para Windows x64. Não é um pacote para macOS/Linux.
+
+CONTINUAR UMA PARTIDA
+Ao sair para o MENU, escolha CONTINUAR. Isso também funciona após fechar e
+abrir o jogo. A partida volta pausada: clique em PAUSA ou pressione P.
+O salvamento é automático a cada 10 segundos, nas mudanças de onda, ao
+pausar, ao voltar ao menu e ao fechar normalmente. NOVA PARTIDA pede
+confirmação antes de substituir a partida atual. Existe um ponto de
+retomada por perfil local, válido para qualquer mapa e dificuldade.
+O arquivo é %LOCALAPPDATA%\SoldadosVsZumbis\campanha.partida.json.
+Se houver falha ao salvar, um aviso aparece; não feche sem salvar se quiser
+preservar os avanços que ainda estão somente na memória.
+
+REMOVER TROPAS
+O botão REMOVER fica entre PAUSA e PRÓXIMA e funciona em todas as
+dificuldades. Clique nele e depois na casa da tropa. R alterna a ferramenta.
+A retirada devolve 35% do custo, arredondado para cima.
+
+TELA CHEIA
+Em CONFIGURAÇÕES > VÍDEO, clique em TELA CHEIA.
+F11 ou Alt+Enter alternam entre janela e tela cheia a qualquer momento.
+A preferência é guardada para a próxima abertura. A partida não reinicia.
+O jogo mantém a proporção da imagem; podem aparecer margens pretas.
+Preferência: %LOCALAPPDATA%\SoldadosVsZumbis\campanha.video.json.
+
+NOVIDADES DA VERSÃO 1.3.0
+Menus: Tab/setas para navegar; Enter para escolher; Esc para voltar.
+F5 salva imediatamente. F1 abre/fecha a ficha da carta selecionada.
+P pausa/retoma; as teclas de combate podem ser alteradas nas Configurações.
+O jogo pausa ao minimizar ou trocar de janela; retome deliberadamente.
+Controle, volume, teclas, texto ampliado e redução de tremor são lembrados.
+Música, ambiente e efeitos têm controles de volume independentes.
+A remoção e a colocação de tropas ficam bloqueadas durante a pausa.
+Cada colocação respeita a recarga de 10 segundos da carta.
+Os resultados registram a maior onda atingida também após uma derrota.
+
+RECUPERAÇÃO
+campanha.partida.anterior.json guarda a gravação anterior da partida.
+Se a gravação atual estiver inválida, o jogo tenta recuperar essa cópia.
+CONFIRMAR NOVA PARTIDA descarta os dois pontos de retomada.
+Preferências: campanha.settings.json. Vídeo: campanha.video.json.
+Todos esses arquivos ficam na mesma pasta de dados indicada acima.
+
+
+CORREÇÃO 1.3.1
+Corrida dos zumbis corredores orientada para a base em todos os quadros.
+Corrigidos o deserto e a virada durante a passada na cachoeira.
+As regras de velocidade, ataque e salvamento continuam compatíveis.
+
+PONTUAÇÃO
+Cada tipo regional vale de 10 a 120 pontos. O total aparece no canto
+inferior esquerdo e no resultado, tanto na vitória quanto na derrota.
+Consulte o histórico no menu PONTUAÇÕES. Os resultados ficam em
+%LOCALAPPDATA%\SoldadosVsZumbis\campanha.pontuacoes.sqlite3.
+CONTINUAR preserva o total; partidas antigas começam a contagem em zero.

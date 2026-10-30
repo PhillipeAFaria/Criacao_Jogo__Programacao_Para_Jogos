@@ -259,7 +259,7 @@ class ReviewTests(unittest.TestCase):
         labels=[call.args[0] for call in draw.call_args_list]
         for data in DIFFICULTIES.values():
             self.assertIn(f"{data['initial_supplies']} suprimentos iniciais",labels)
-            self.assertIn(f"Limite de reserva: {data['supply_cap']}",labels)
+            self.assertIn("Reserva de suprimentos sem limite",labels)
 
     def test_first_save_after_recovery_keeps_valid_backup(self):
         b=self.battle();b.place(0,2)

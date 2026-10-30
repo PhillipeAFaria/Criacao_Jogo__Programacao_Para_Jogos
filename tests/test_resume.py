@@ -126,19 +126,6 @@ class ResumeTests(unittest.TestCase):
         self.assertIs(self.game.battle, b)
         self.assertEqual(self.game.scene, 'battle')
 
-    def test_disk_resume_uses_the_active_profile_for_future_scores(self):
-        b = self.battle('desert', 'medium')
-        b.player_name = 'Jogador antigo'
-        self.assertTrue(self.game.checkpoint())
-        self.game.battle = None
-        self.game.player_name = 'Jogadora atual'
-        self.game.pending_snapshot = SessionStore(self.path).load()
-
-        self.assertTrue(self.game.resume_battle())
-        self.assertEqual(self.game.battle.player_name, 'Jogadora atual')
-        # A retomada continua sendo a mesma partida; só a identidade ativa muda.
-        self.assertEqual(self.game.battle.match_id, b.match_id)
-
     def test_disk_resume_without_in_memory_battle(self):
         b = self.battle('beach', 'hard')
         self.game.leave_battle_to_title()

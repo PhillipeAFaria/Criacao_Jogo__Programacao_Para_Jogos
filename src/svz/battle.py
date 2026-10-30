@@ -3,10 +3,18 @@ from __future__ import annotations
 
 from svz.animation import AnimationManager
 from typing import Callable
+from svz.visual_layout import DEFENDER_WEAPON_PROFILES
+from svz.visual_layout import ENEMY_ATTACK_ORIGINS
+from svz.visual_layout import ENEMY_BODY_LAYOUTS
 import math
 import pygame
 import random
 
+from .actor_visuals import (
+    defender_weapon_origin,
+    enemy_render_scale,
+    sprite_emitter_contact,
+)
 from .balance import (
     boss_damage_scale,
     enemy_damage_scale,
@@ -17,6 +25,7 @@ from .board import (
     lane_bomb_ground_y,
     lane_bomb_home_x,
     lane_bounds,
+    lane_depth,
 )
 from .config import (
     BEACH_WATER_DEFENDERS,
@@ -28,6 +37,7 @@ from .config import (
     COLS,
     GOLD,
     GRAY,
+    HEIGHT,
     LANE_BOMB_HOME_X,
     LANE_PROTECTION_COLUMN,
     LANE_PROTECTION_END_X,
@@ -37,20 +47,21 @@ from .config import (
     TEAL,
     TOTAL_WAVES,
     WHITE,
+    WIDTH,
 )
 from .content import (
+    ACTIVE_ENEMY_SKILL_TAGS,
     CRAWLER_ENEMIES,
     DEFENDER_ACTOR_BY_KEY,
     DEFENSES,
     ENEMIES,
+    PROMOTIONS,
     REGIONS,
-    regional_sprite_index,
     REGION_ROSTERS,
     difficulty_profile,
+    regional_sprite_index,
+    weapon_reload_seconds,
 )
-from .combat_actions import CombatActionsMixin
-from .enemy_abilities import EnemyAbilityMixin
-from .enemy_motion import EnemyMotionMixin
 from .entities import (
     Defender,
     Enemy,
@@ -62,6 +73,7 @@ from .entities import (
 )
 from .math_utils import (
     clamp,
+    lerp,
 )
 from .motion import (
     DefeatAnimation,
@@ -75,16 +87,16 @@ from .waves import (
 
 
 from uuid import uuid4
+from .scoring import points_for
 
 
-class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
+class Battle:
     def __init__(self, app: "Game", region: str, selected: list[tuple[str, str]]) -> None:
         self.wave_director = WaveDirector(self)
         self.app = app
         self.region = region
         self.score = 0
         self.match_id = uuid4().hex
-        self.player_name = getattr(app, "player_name", "") or "Jogador"
         self.difficulty = getattr(app, "difficulty", "medium")
         self.difficulty_data = difficulty_profile(self.difficulty)
         valid_keys = {key for key, _display in REGION_ROSTERS.get(region, ())}
@@ -104,7 +116,8 @@ class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
         self.supplies = int(self.difficulty_data["initial_supplies"])
         self.wave = 0
         self.wave_banner = 0.0
-        self.intermission = 2.5
+        self.intermission = 0.0
+        self.first_wave_countdown = 0.0
         self.orders: list[SpawnOrder] = []
         self.spawn_timer = 0.0
         self.started_wave = False
@@ -249,7 +262,7 @@ class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
             None,
         )
         if defender is None:
-            self.announce("Nenhuma tropa para recolher nesta posição.", 1.4, GRAY)
+            self.announce("Nenhuma tropa nesta faixa para remover.", 1.4, GRAY)
             return
         self.defenders.remove(defender)
         refund = max(1, math.ceil(float(defender.stats["cost"]) * 0.35))
@@ -413,6 +426,614 @@ class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
             return min(preferred, key=lambda enemy: enemy.x)
         return min(choices, key=lambda enemy: enemy.x)
 
+    def blocker_for(self, enemy: Enemy) -> Defender | None:
+        contact_distance = float(enemy.data.get("contact_distance", 58.0))
+        choices = [
+            defender
+            for defender in self.defenders
+            if defender.row == enemy.row
+            and defender.hp > 0
+            and defender.deployed
+            and defender.x <= enemy.x
+        ]
+        if not choices:
+            return None
+        nearest = max(choices, key=lambda d: d.x)
+        if enemy.x - nearest.x <= contact_distance + 0.5:
+            return nearest
+        return None
+
+    def swept_blocker_for(self, enemy: Enemy, next_x: float) -> Defender | None:
+        """Impede que um passo rápido atravesse a hitbox de uma defesa.
+
+        A verificação considera o segmento percorrido no quadro, portanto
+        continua correta mesmo com ``dt`` alto ou com o Corredor mais veloz.
+        """
+        contact_distance = float(enemy.data.get("contact_distance", 58.0))
+        crossed = [
+            defender
+            for defender in self.defenders
+            if defender.row == enemy.row
+            and defender.hp > 0
+            and defender.deployed
+            and defender.x <= enemy.x
+            and next_x <= defender.x + contact_distance
+        ]
+        return max(crossed, key=lambda defender: defender.x) if crossed else None
+
+    def begin_jump(self, enemy: Enemy, blocker: Defender) -> None:
+        """Inicia um único salto contínuo sobre a primeira defesa bloqueadora."""
+        enemy.jump_used = True
+        enemy.jump_state = "vault"
+        enemy.jump_duration = 0.52
+        enemy.jump_timer = enemy.jump_duration
+        enemy.jump_start_x = enemy.x
+        enemy.jump_end_x = max(BOARD.left + 8, blocker.x - 60)
+        enemy.motion.trigger("jump", enemy.jump_duration)
+        self.pulse(enemy.x, enemy.y + 16, GOLD, 9)
+        self.announce(f"{enemy.data['name']}: ultrapassou uma única defesa.", 1.35, RED)
+
+    def begin_dig(self, enemy: Enemy, blocker: Defender) -> None:
+        """Inicia a escavação mostrada em três etapas, sem teleporte ou dano grátis."""
+        enemy.dig_used = True
+        enemy.burrowed = True
+        enemy.dig_state = "enter"
+        enemy.dig_duration = 0.34
+        enemy.dig_timer = enemy.dig_duration
+        enemy.dig_start_x = enemy.x
+        # A saída fica logo depois da primeira defesa encontrada. O Escavador
+        # não pode saltar uma fileira inteira nem escolher um alvo distante.
+        enemy.dig_end_x = max(BOARD.left + 8, blocker.x - 60)
+        enemy.motion.trigger("dig_enter", enemy.dig_duration)
+        self.pulse(enemy.x, enemy.y + 17, (194, 160, 77), 12)
+        self.announce("Escavador: começou a cavar sob a primeira defesa.", 1.55, (232, 198, 112))
+
+    def update_enemy_motion(self, enemy: Enemy, dt: float) -> bool:
+        """Atualiza movimentos especiais que devem ser vistos antes da próxima ação.
+
+        Retorna ``True`` enquanto o inimigo estiver saltando ou escavando.
+        Isso impede que o movimento normal transforme a animação num
+        teleporte e também impede mordidas durante a travessia.
+        """
+        if enemy.jump_state:
+            if enemy.motion.state != "jump":
+                enemy.motion.trigger("jump", enemy.jump_timer)
+            enemy.jump_timer = max(0.0, enemy.jump_timer - dt)
+            progress = clamp(1.0 - enemy.jump_timer / max(0.01, enemy.jump_duration), 0.0, 1.0)
+            enemy.x = lerp(enemy.jump_start_x, enemy.jump_end_x, progress)
+            if enemy.jump_timer <= 0:
+                enemy.x = enemy.jump_end_x
+                enemy.jump_state = ""
+                self.pulse(enemy.x, enemy.y + 17, GOLD, 10)
+            return True
+
+        if not enemy.dig_state:
+            return False
+
+        enemy.dig_timer = max(0.0, enemy.dig_timer - dt)
+        if enemy.dig_state == "enter":
+            if enemy.motion.state != "dig_enter":
+                enemy.motion.trigger("dig_enter", enemy.dig_timer)
+            if enemy.dig_timer <= 0:
+                enemy.dig_state = "tunnel"
+                enemy.dig_duration = 0.58
+                enemy.dig_timer = enemy.dig_duration
+                enemy.motion.trigger("dig_tunnel", enemy.dig_duration)
+            return True
+
+        if enemy.dig_state == "tunnel":
+            if enemy.motion.state != "dig_tunnel":
+                enemy.motion.trigger("dig_tunnel", enemy.dig_timer)
+            progress = clamp(1.0 - enemy.dig_timer / max(0.01, enemy.dig_duration), 0.0, 1.0)
+            enemy.x = lerp(enemy.dig_start_x, enemy.dig_end_x, progress)
+            if enemy.dig_timer <= 0:
+                enemy.x = enemy.dig_end_x
+                enemy.dig_state = "emerge"
+                enemy.dig_duration = 0.34
+                enemy.dig_timer = enemy.dig_duration
+                enemy.motion.trigger("dig_emerge", enemy.dig_duration)
+                self.pulse(enemy.x, enemy.y + 17, (218, 185, 103), 11)
+            return True
+
+        # Etapa final: a silhueta cresce do chão no renderizador e só então
+        # o Escavador volta a poder se mover ou atacar.
+        if enemy.motion.state != "dig_emerge":
+            enemy.motion.trigger("dig_emerge", enemy.dig_timer)
+        if enemy.dig_timer <= 0:
+            enemy.dig_state = ""
+            enemy.burrowed = False
+            self.pulse(enemy.x, enemy.y + 17, (226, 192, 112), 8)
+        return True
+
+    @staticmethod
+    def damage_channel(effect: str, source: Defender | None) -> str:
+        """Classifica o dano sem depender do nome visual do projétil."""
+        if effect in {"explosion", "mortar"}:
+            return "explosive"
+        if effect in {"poison", "acid", "acid_brief"}:
+            return "chemical"
+        if effect in {"flame", "status_tick"}:
+            return "thermal"
+        if effect == "water":
+            return "hydraulic"
+        if source is None:
+            return "environment"
+        role = str(source.stats.get("role", ""))
+        if role == "sniper":
+            return "precision"
+        if role == "sub":
+            return "piercing"
+        if role in {"shield", "blade"}:
+            return "melee"
+        if role in {"grenade", "mortar", "rocket", "suicide_bomber", "mine"}:
+            return "explosive"
+        if role in {"poison", "gas_grenade"}:
+            return "chemical"
+        if role == "flame":
+            return "thermal"
+        if role == "waterjet":
+            return "hydraulic"
+        return "ballistic"
+
+    def take_enemy_damage(self, enemy: Enemy, amount: float, effect: str = "", source: Defender | None = None) -> None:
+        if enemy.hp <= 0:
+            return
+        channel = self.damage_channel(effect, source)
+        counter_keys = tuple(enemy.data.get("counter_keys", ()))
+        counter_hit = source is not None and source.key in counter_keys
+        if counter_hit:
+            was_closed = enemy.defense_broken <= 0
+            enemy.defense_broken = max(enemy.defense_broken, 5.0)
+            if was_closed:
+                label = str(enemy.data.get("defense_name", "defesa especial"))
+                self.texts.append(FloatingText("DEFESA ROMPIDA", enemy.x, enemy.y - 65, TEAL, 0.9))
+                self.announce(f"{source.display_name} rompeu {label}.", 1.5, TEAL)
+
+        # Contenções de início de pista continuam absolutas. A imunidade vale
+        # para tropas e projéteis, não para o dispositivo único da própria fase.
+        containment_hit = source is None and amount >= 9000
+        if not containment_hit and enemy.defense_broken <= 0:
+            if channel in tuple(enemy.data.get("immunities", ())) and not counter_hit:
+                self.texts.append(FloatingText("IMUNE", enemy.x, enemy.y - 54, RED, 0.65))
+                return
+            resistance = float(enemy.data.get("resistances", {}).get(channel, 0.0))
+            amount *= max(0.0, 1.0 - clamp(resistance, 0.0, 0.95))
+        weakness = float(enemy.data.get("weaknesses", {}).get(channel, 1.0))
+        amount *= max(0.0, weakness)
+        armor = float(enemy.data.get("armor", 0))
+        if "shield" in enemy.tags and effect not in {"flame", "poison", "explosion", "mortar"}:
+            armor = max(armor, 0.52)
+        if source and source.ascended > 0:
+            amount *= 1.55
+        applied = amount * (1 - armor)
+        enemy.hp -= applied
+        if effect not in {"status_tick", "acid"}:
+            self.app.audio.play("zombie_hit", min_interval_ms=70)
+        if effect not in {"status_tick", "acid"}:
+            enemy.motion.flash()
+            # Todo infectado acusa o impacto e interrompe brevemente o avanço.
+            # Corredores são a exceção declarada: ainda piscam/animam o golpe,
+            # mas sua corrida lógica nunca é paralisada pelo stagger.
+            if "unstaggerable" not in enemy.tags:
+                enemy.stun = max(enemy.stun, float(enemy.data.get("damage_stagger", 0.14)))
+            if not enemy.jump_state and not enemy.dig_state:
+                hit_duration = (
+                    enemy.visual_animation.animations["hit"].duration
+                    if enemy.visual_animation is not None
+                    else 0.12
+                )
+                enemy.motion.trigger("hit", hit_duration)
+        if effect == "flame":
+            was_burning = enemy.burn > 0
+            enemy.burn = max(enemy.burn, 3.3)
+            if not was_burning:
+                self.pulse(enemy.x, enemy.y - 20, (246, 142, 45), 6)
+            self.effects.append(VisualEffect("flame_impact", enemy.x, enemy.y - 24, (246, 142, 45), 0.26, scale=0.72))
+        elif effect == "poison":
+            was_poisoned = enemy.poisoned > 0
+            enemy.poisoned = max(enemy.poisoned, 4.2)
+            if not was_poisoned:
+                self.pulse(enemy.x, enemy.y - 20, (132, 239, 80), 7)
+            self.effects.append(VisualEffect("toxic_impact", enemy.x, enemy.y - 24, (132, 239, 80), 0.34, scale=0.82))
+        elif effect == "water":
+            # Água não substitui o dano de fogo em força bruta: ela extingue
+            # a queima e segura o avanço do alvo por uma janela curta.
+            enemy.burn = 0.0
+            soak_time = 3.6 if source and source.ascended > 0 else 2.4
+            enemy.soaked = max(enemy.soaked, soak_time)
+            self.effects.append(VisualEffect("water_impact", enemy.x, enemy.y - 20, (102, 224, 244), 0.30, scale=0.78))
+        if effect == "acid":
+            enemy.corrosion = max(enemy.corrosion, 2.5)
+        self.texts.append(FloatingText(str(max(0, int(round(applied)))), enemy.x, enemy.y - 52, GOLD if source and source.ascended else WHITE, 0.55))
+        if enemy.hp <= 0:
+            self.kill_enemy(enemy)
+
+    def damage_defender(self, defender: Defender, amount: float, effect: str = "") -> None:
+        if defender.hp <= 0:
+            return
+        defender.hp -= amount
+        self.app.audio.play("soldier_hit", min_interval_ms=95)
+        defender.motion.flash()
+        hit_duration = (
+            defender.visual_animation.animations["hit"].duration
+            if defender.visual_animation is not None
+            else 0.12
+        )
+        defender.motion.trigger("hit", hit_duration)
+        if effect == "stun":
+            defender.stun = max(defender.stun, 2.2)
+        elif effect == "acid":
+            defender.corrosion = max(defender.corrosion, 4.0)
+        elif effect == "acid_brief":
+            defender.corrosion = max(defender.corrosion, 1.8)
+        if effect in {"acid", "acid_brief"}:
+            self.effects.append(VisualEffect("toxic_impact", defender.x, defender.y - 28, (132, 239, 80), 0.28, scale=0.58))
+        self.texts.append(FloatingText(str(int(amount)), defender.x, defender.y - 48, RED, 0.6))
+        if defender.hp <= 0:
+            self.kill_defender(defender)
+
+    def kill_defender(self, defender: Defender) -> None:
+        if defender not in self.defenders:
+            return
+        # Tropas comuns não recebem uma falsa queda procedural. Ao zerar a
+        # vida, saem imediatamente do campo, conforme a regra desta etapa.
+        self.defenders.remove(defender)
+        if defender.stats["role"] == "barrier" and defender.stats["level"] >= 2:
+            for enemy in self.enemies[:]:
+                if enemy.row == defender.row and abs(enemy.x - defender.x) < CELL_W * 1.35:
+                    self.take_enemy_damage(enemy, defender.stats["damage"], "explosion")
+            self.explosion(defender.x, defender.y, RED, 28)
+        self.announce(f"{defender.display_name} foi perdido.", 1.5, RED)
+
+    def kill_enemy(self, enemy: Enemy) -> None:
+        if enemy not in self.enemies:
+            return
+        # Apenas chefes/subchefes manterão animação de morte dedicada. O
+        # Caminhante e os demais inimigos comuns desaparecem ao chegar a zero.
+        if enemy.is_boss or enemy.data.get("subboss"):
+            sprite = self.app.enemy_sprite(self, enemy)
+            width, height = enemy_render_scale(enemy, self.region)
+            self.fallen.append(
+                DefeatAnimation(
+                    sprite,
+                    enemy.x,
+                    enemy.y,
+                    width,
+                    height,
+                    self.region == "beach" and enemy.row in self.water_rows,
+                    0.58,
+                    enemy=True,
+                )
+            )
+        self.enemies.remove(enemy)
+        self.score += points_for(self.region, enemy.key)
+        self.dead_history.append((enemy.key, enemy.row, enemy.x))
+        if len(self.dead_history) > 12:
+            self.dead_history.pop(0)
+        if enemy.is_boss or enemy.data.get("subboss"):
+            self.explosion(enemy.x, enemy.y, GOLD, 26)
+        if "explode_death" in enemy.tags:
+            for defender in self.defenders[:]:
+                if defender.row == enemy.row and abs(defender.x - enemy.x) < CELL_W * 1.15:
+                    self.damage_defender(defender, self.scaled_enemy_damage(enemy, 52), "acid")
+            self.explosion(enemy.x, enemy.y, (114, 212, 99), 25)
+        if enemy.is_boss:
+            bonus = int(round((46 + self.wave * 2) * float(self.difficulty_data["supply_gain"])))
+            self.supplies += bonus
+            self.boss_seen.add(self.wave)
+            self.announce(f"Chefe neutralizado: +{bonus} suprimentos.", 3.4, GOLD)
+            self.pulse(WIDTH / 2, HEIGHT / 2, GOLD, 75)
+        elif enemy.data.get("subboss"):
+            bonus = int(round(18 * float(self.difficulty_data["supply_gain"])))
+            self.supplies += bonus
+            self.announce(f"Sub-boss neutralizado: +{bonus} suprimentos.", 2.4, GOLD)
+        else:
+            self.supplies += 1
+
+    def pulse(self, x: float, y: float, color: tuple[int, int, int], amount: int) -> None:
+        # Mantido como gancho de compatibilidade. A versão antiga espalhava
+        # círculos; a Beta 4 reserva o desenho para sprites de VFX completos.
+        return
+
+    def explosion(
+        self,
+        x: float,
+        y: float,
+        color: tuple[int, int, int],
+        amount: int,
+        *,
+        scale: float | None = None,
+    ) -> None:
+        if scale is None:
+            scale = clamp(0.62 + amount / 44.0, 0.72, 1.58)
+        self.effects.append(VisualEffect("explosion", x, y - 18, color, 0.46, scale=scale))
+        self.shake = max(self.shake, 0.16)
+        self.app.audio.play("explosion", min_interval_ms=120)
+
+    def fire_defender(self, defender: Defender, target: Enemy) -> None:
+        role = defender.stats["role"]
+        level = defender.stats["level"]
+        ascending = defender.ascended > 0
+        if role in {"radio", "promoter", "barrier", "mine", "suicide_bomber", "sonar"}:
+            return
+        if defender.max_ammo > 0:
+            defender.ammo -= 1
+        defender.attack_timer = float(defender.stats["cooldown"]) * (0.68 if ascending else 1.0)
+        approved_shot_duration = (
+            defender.visual_animation.animations["shoot"].duration
+            if defender.visual_animation is not None
+            else 0.0
+        )
+        defender.motion.trigger(
+            "attack",
+            approved_shot_duration
+            or (0.48 if role == "mortar" else (0.36 if role == "grenade" else 0.24)),
+        )
+        if defender.visual_animation is not None and "shoot" in defender.visual_animation.animations:
+            # O projétil é criado neste mesmo método. Colocar a sprite em
+            # disparo agora impede que sua origem seja medida na pose parada.
+            defender.visual_animation.play("shoot", restart=True)
+        heavy_roles = {"heavy", "shotgun", "sniper", "grenade", "gas_grenade", "mortar", "rocket", "sub"}
+        rifle_roles = {"rifle", "flame", "waterjet", "poison", "boat"}
+        shot_sound = (
+            "shot_heavy"
+            if role in heavy_roles
+            else ("shot_rifle" if role in rifle_roles else "shot_pistol")
+        )
+        self.app.audio.play(shot_sound, min_interval_ms=55)
+        if role == "sniper" and level == 1 and not ascending and random.random() < 0.28:
+            self.texts.append(FloatingText("ERROU", target.x, target.y - 42, GRAY, 0.7))
+            miss_x, miss_y = defender_weapon_origin(defender)
+            self.projectiles.append(Projectile(miss_x, miss_y, None, target.x, target.y - 18, 0, "tracer", defender, travel=0.22))
+            return
+        damage = float(defender.stats["damage"]) * float(self.difficulty_data["defender_damage"])
+        kind = "bullet"
+        radius = 0.0
+        effect = ""
+        weapon_profile = DEFENDER_WEAPON_PROFILES.get(defender.key)
+        profiled_kind = weapon_profile.projectile_kind if weapon_profile else ""
+        if role in {"rifle", "heavy"}:
+            kind = profiled_kind or "rifle"
+            if role == "heavy":
+                damage *= 1.06
+            if ascending:
+                kind, radius = "fuzileiro", CELL_W * 0.72
+                damage *= 1.25
+        elif role == "shotgun":
+            kind, radius = profiled_kind or "shotgun", CELL_W * (0.45 if ascending else 0.25)
+            distance = max(1, (target.x - defender.x) / CELL_W)
+            damage *= 1.45 if distance < 1.2 else 0.9
+            if ascending:
+                damage *= 1.4
+        elif role == "sniper":
+            kind = profiled_kind or "sniper"
+            if ascending:
+                damage *= 2.55
+        elif role in {"grenade", "mortar"}:
+            kind = profiled_kind or ("mortar" if role == "mortar" else "grenade")
+            radius = CELL_W * (1.05 if ascending else 0.78)
+            effect = "mortar"
+            if ascending and role == "mortar":
+                same_lane = sorted(
+                    (
+                        enemy
+                        for enemy in self.enemies
+                        if enemy is not target and enemy.row == target.row and enemy.hp > 0
+                    ),
+                    key=lambda enemy: abs(enemy.x - target.x),
+                )[:2]
+                origin_x, origin_y = defender_weapon_origin(defender)
+                for clone in same_lane:
+                    self.projectiles.append(
+                        Projectile(
+                            origin_x,
+                            origin_y,
+                            clone,
+                            clone.x,
+                            clone.y - 15,
+                            damage * 0.72,
+                            kind,
+                            defender,
+                            radius,
+                            True,
+                            0.45,
+                            elapsed=-0.30,
+                            effect=effect,
+                        )
+                    )
+            if ascending and role == "grenade":
+                kind, radius, damage = "bazooka", BOARD.width, damage * 1.45
+        elif role == "rocket":
+            kind, radius, effect = profiled_kind or "bazooka", CELL_W * 1.05, "mortar"
+        elif role == "flame":
+            kind, radius, effect = "flame", CELL_W * 0.55, "flame"
+            damage *= 0.70
+        elif role == "gas_grenade":
+            kind = profiled_kind or "gas_grenade"
+            radius = CELL_W * 0.82
+            effect = "poison"
+        elif role == "poison":
+            kind = "poison"
+            radius = CELL_W * (0.48 if level == 1 else 0.62)
+            effect = "poison"
+            damage *= 0.62
+        elif role == "waterjet":
+            kind = "waterjet"
+            radius = CELL_W * (0.38 if level == 1 else 0.50)
+            effect = "water"
+            damage *= 0.62
+        elif role == "boat":
+            kind = profiled_kind or "boat"
+        elif role == "sub":
+            kind, radius = profiled_kind or "torpedo", CELL_W * 0.42
+        elif role in {"shield", "blade"}:
+            kind = "melee"
+            radius = CELL_W * 0.12
+        travel = {
+            "shotgun": 0.18,
+            "buckshot_12g": 0.18,
+            "sniper": 0.20,
+            "sniper_awm": 0.22,
+            "sniper_762": 0.22,
+            "sniper_338": 0.24,
+            "rifle": 0.24,
+            "fuzileiro": 0.24,
+            "pistol_9mm": 0.20,
+            "pistol_50ae": 0.22,
+            "revolver_357": 0.22,
+            "smg_9mm": 0.20,
+            "rifle_556_scar": 0.24,
+            "rifle_556_m16": 0.24,
+            "mg_762": 0.23,
+            "naval_round": 0.25,
+            "grenade_40mm": 0.46,
+            "gas_grenade": 0.48,
+            "mortar_shell": 0.56,
+            "rpg7_rocket": 0.45,
+            "flame": 0.38,
+            "poison": 0.38,
+            "waterjet": 0.38,
+            "torpedo": 0.62,
+            "compact_torpedo": 0.62,
+        }.get(kind, 0.42)
+        # A mesma âncora alimenta lógica e desenho. O projétil não muda de
+        # posição quando a perspectiva ou o quadro da animação muda.
+        muzzle_x, muzzle_y = defender_weapon_origin(defender)
+        projectile = Projectile(
+            muzzle_x,
+            muzzle_y,
+            target,
+            target.x,
+            target.y - 16,
+            damage,
+            kind,
+            defender,
+            radius,
+            True,
+            travel,
+            effect=effect,
+        )
+        if kind in {"mortar", "mortar_shell"}:
+            projectile.elapsed = -0.34
+        elif kind in {"grenade", "grenade_40mm", "gas_grenade", "bazooka", "rpg7_rocket"}:
+            projectile.elapsed = -0.12
+        self.projectiles.append(projectile)
+
+    def closest_enemy_at(self, row: int, x: float) -> Enemy | None:
+        candidates = [enemy for enemy in self.enemies if enemy.row == row and enemy.hp > 0]
+        return min(candidates, key=lambda e: abs(e.x - x)) if candidates else None
+
+    def promote_defender(self, instructor: Defender) -> bool:
+        """Converte uma tropa N1 real em sua carta N2 correspondente.
+
+        A promoção obedece à mesma regra de isolamento do combate: o instrutor
+        só alcança uma tropa da própria faixa.
+        """
+        radius = float(instructor.stats["range"]) * CELL_W
+        candidates = [
+            defender
+            for defender in self.defenders
+            if defender is not instructor
+            and defender.key in PROMOTIONS
+            and int(defender.stats["level"]) == 1
+            and defender.ascended <= 0
+            and abs(defender.x - instructor.x) <= radius
+            and defender.row == instructor.row
+        ]
+        if not candidates:
+            # Não reinicia o minuto inteiro se ainda não houver uma tropa N1
+            # válida por perto: o jogador ganha uma pequena janela para criar
+            # ou reposicionar a candidata.
+            instructor.utility_timer = 8.0
+            return False
+
+        target = min(candidates, key=lambda defender: abs(defender.x - instructor.x))
+        target_key = PROMOTIONS[target.key]
+        upgraded = DEFENSES[target_key]
+        old_hp_ratio = target.hp / max(1.0, target.max_hp)
+        old_ammo_ratio = target.ammo / max(1, target.max_ammo) if target.max_ammo else 1.0
+        target.key = target_key
+        target.stats = upgraded
+        target.sprite_index = regional_sprite_index(self.region, target_key)
+        target.hp = max(1.0, float(upgraded["hp"]) * max(0.55, old_hp_ratio))
+        target.ammo = int(round(int(upgraded["ammo"]) * old_ammo_ratio)) if int(upgraded["ammo"]) else 0
+        target.reload_timer = 0.0
+        target.reload_total = 0.0
+        target.attack_timer = 0.0
+        target.utility_timer = 0.0
+        target.stun = 0.0
+        target.corrosion = 0.0
+        target.display_name = self.display_name_for(target_key)
+        instructor.utility_timer = float(instructor.stats["cooldown"])
+        instructor.motion.trigger("support", 0.46)
+        target.motion.trigger("promote", 0.60)
+        self.announce(f"PROMOÇÃO CONCLUÍDA: {target.display_name} agora é N2!", 2.5, GOLD)
+        self.pulse(target.x, target.y - 12, GOLD, 28)
+        return True
+
+    def display_name_for(self, key: str) -> str:
+        """Mantém a nomenclatura regional quando uma carta muda de nível."""
+        for roster_key, display in REGION_ROSTERS[self.region]:
+            if roster_key == key:
+                return display
+        return str(DEFENSES[key]["base"])
+
+    def utility_defender(self, defender: Defender, dt: float) -> None:
+        role = defender.stats["role"]
+        if role == "radio" and defender.utility_timer <= 0:
+            # Contrato único da economia: qualquer gerador regional entrega
+            # exatamente doze suprimentos a cada doze segundos. A dificuldade
+            # ainda regula custos, inimigos e recompensas, mas nunca altera o
+            # relógio do gerador, que precisa ser previsível desde o começo.
+            gain = 12
+            self.supplies += gain
+            defender.utility_timer = 12.0
+            self.app.audio.play("supply", min_interval_ms=240)
+            defender.motion.trigger("support", 1.60)
+            self.texts.append(FloatingText(f"+{gain} SUP", defender.x, defender.y - 55, GOLD, 1.0))
+            self.pulse(defender.x, defender.y - 18, GOLD, 8)
+        elif role == "promoter" and defender.utility_timer <= 0:
+            self.promote_defender(defender)
+        elif role == "sonar" and defender.utility_timer <= 0:
+            revealed = [
+                enemy for enemy in self.enemies
+                if enemy.row == defender.row and enemy.x >= defender.x
+            ]
+            for enemy in revealed:
+                enemy.soaked = max(enemy.soaked, 2.2)
+                enemy.quarantine_mark = max(enemy.quarantine_mark, 2.2)
+                if defender.key in tuple(enemy.data.get("counter_keys", ())):
+                    enemy.defense_broken = max(enemy.defense_broken, 5.0)
+            defender.utility_timer = float(defender.stats["cooldown"])
+            defender.motion.trigger("support", 0.9)
+            if revealed:
+                self.announce(f"Sonar: {len(revealed)} ameaça(s) revelada(s).", 1.3, TEAL)
+
+    def update_self_reload(self, defender: Defender, dt: float) -> bool:
+        """Executa a recarga da própria arma e bloqueia o tiro nesse estado."""
+        if defender.max_ammo <= 0 or defender.ammo > 0:
+            defender.reload_timer = 0.0
+            defender.reload_total = 0.0
+            return False
+        # A última rajada continua visualmente completa antes de a arma baixar.
+        if defender.reload_timer <= 0 and defender.motion.state == "attack" and defender.motion.event_left > 0:
+            return True
+        if defender.reload_timer <= 0:
+            defender.reload_total = weapon_reload_seconds(defender.stats, defender.ascended > 0)
+            defender.reload_timer = defender.reload_total
+            defender.motion.trigger("reload", defender.reload_total)
+            self.app.audio.play("reload", min_interval_ms=160)
+        defender.reload_timer = max(0.0, defender.reload_timer - dt)
+        if defender.reload_timer <= 0:
+            defender.ammo = defender.max_ammo
+            defender.attack_timer = max(defender.attack_timer, 0.16)
+            defender.motion.loop("idle")
+            defender.reload_total = 0.0
+            return True
+        if defender.motion.state != "reload":
+            defender.motion.trigger("reload", defender.reload_timer)
+        return True
+
     def update_deployments(self, dt: float) -> None:
         """Faz a carta virar um soldado que caminha da base até a célula."""
         for defender in self.defenders:
@@ -509,7 +1130,6 @@ class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
             defender.motion.advance(dt, "armed" if role == "mine" else "idle")
             defender.attack_timer -= dt
             defender.utility_timer -= dt
-            defender.tactical_ammo_timer = max(0.0, defender.tactical_ammo_timer - dt)
             defender.stun = max(0.0, defender.stun - dt)
             defender.corrosion = max(0.0, defender.corrosion - dt)
             defender.ascended = max(0.0, defender.ascended - dt)
@@ -571,6 +1191,467 @@ class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
             target = self.target_in_range(defender, minimum)
             if target and defender.attack_timer <= 0 and defender.has_ammo():
                 self.fire_defender(defender, target)
+
+    @staticmethod
+    def is_military_defender(defender: Defender) -> bool:
+        """Tropas humanas recebem os efeitos globais de entrada dos chefes.
+
+        Minas e barreiras são equipamentos fixos; elas continuam como opção de
+        contenção quando uma chegada especial fecha temporariamente os tiros.
+        """
+        return defender.stats["role"] not in {"barrier", "mine", "suicide_bomber"}
+
+    def boss_entrance(self, enemy: Enemy) -> None:
+        """Executa uma única ação de entrada. Ela nunca é reutilizada no ciclo.
+
+        Cada chefe ganha um impacto memorável ao aparecer, mas a ação recorrente
+        que vem depois é menor, localizada e possui um intervalo legível.
+        """
+        boss_type = enemy.data.get("type", "")
+        skill_duration = self.enemy_skill_duration(enemy, 0.72)
+        enemy.motion.trigger("skill", skill_duration)
+        self.shake = max(self.shake, 0.42)
+        entrance_visuals = {
+            "bruto_demolidor": ("ground_slam", (230, 91, 61)),
+            "comandante": ("command_aura", (232, 77, 62)),
+            "alfa": ("toxic_wave", (132, 239, 80)),
+            "mutante": ("ground_slam", (225, 152, 70)),
+            "necromante": ("arcane_cast", (197, 128, 238)),
+            "colosso": ("ground_slam", (227, 163, 81)),
+            "tide": ("tidal_surge", (95, 195, 239)),
+            "hunter": ("tidal_surge", (95, 195, 239)),
+            "leviathan": ("tidal_surge", (95, 195, 239)),
+        }
+        visual_kind, visual_color = entrance_visuals.get(str(boss_type), ("ground_slam", RED))
+        effect_x, effect_y = self.enemy_effect_origin(enemy, visual_kind)
+        self.effects.append(
+            VisualEffect(
+                visual_kind,
+                effect_x,
+                effect_y,
+                visual_color,
+                skill_duration,
+                scale=1.45,
+                owner=enemy,
+                anchor_kind=visual_kind,
+            )
+        )
+        if boss_type == "bruto_demolidor":
+            for defender in self.defenders:
+                if self.is_military_defender(defender):
+                    defender.stun = max(defender.stun, 3.0)
+            enemy.skill_timer = 18.0
+            self.announce("BRUTO DEMOLIDOR: tropas militares paralisadas por 3 s!", 2.8, RED)
+        elif boss_type == "comandante":
+            for other in self.enemies:
+                if other is not enemy and abs(other.x - enemy.x) < CELL_W * 4.2:
+                    other.rage = max(other.rage, 2.4)
+            enemy.skill_timer = 14.0
+            self.announce("Comandante dos Mortos: a escolta recebeu fúria!", 2.4, RED)
+        elif boss_type == "alfa":
+            self.global_toxic = 1.2
+            for defender in self.defenders:
+                defender.corrosion = max(defender.corrosion, 1.0)
+            enemy.skill_timer = 14.0
+            self.announce("Cuspidor Alfa: névoa ácida global por um instante!", 2.4, (150, 232, 112))
+        elif boss_type == "mutante":
+            for defender in self.defenders[:]:
+                if abs(defender.row - enemy.row) <= 1 and abs(defender.x - enemy.x) < CELL_W * 2.25:
+                    self.damage_defender(defender, self.scaled_enemy_damage(enemy, 8))
+                    defender.stun = max(defender.stun, 1.15)
+            enemy.skill_timer = 14.0
+            self.announce("Mutante das Ruínas: o abalo atingiu apenas a vanguarda próxima.", 2.2, RED)
+        elif boss_type == "necromante":
+            self.enemies.append(Enemy("necromante_minion", enemy.row, ENEMIES["necromante_minion"], self.region, self.wave, difficulty=self.difficulty, x=enemy.x + 48))
+            enemy.skill_timer = 15.0
+            self.announce("Necromante: uma múmia foi invocada na chegada.", 2.3, (197, 128, 238))
+        elif boss_type == "colosso":
+            for defender in self.defenders:
+                if self.is_military_defender(defender):
+                    defender.stun = max(defender.stun, 1.2)
+            enemy.skill_timer = 18.0
+            self.announce("Colosso Mutante: tremor inicial interrompeu os tiros por 1,2 s.", 2.4, RED)
+        elif boss_type == "tide":
+            for defender in self.defenders[:]:
+                if defender.row == enemy.row and defender.stats.get("water_only"):
+                    self.damage_defender(defender, self.scaled_enemy_damage(enemy, 8))
+                    defender.stun = max(defender.stun, 0.9)
+            enemy.skill_timer = 14.0
+            self.announce("Bruto da Maré: a primeira onda abalou o canal.", 2.1, (95, 195, 239))
+        elif boss_type == "hunter":
+            enemy.x = max(BOARD.left + CELL_W * 4.8, enemy.x - CELL_W * 0.7)
+            enemy.skill_timer = 13.0
+            self.announce("Caçador Abissal: mergulhou e surgiu mais perto no canal.", 2.1, (95, 195, 239))
+        elif boss_type == "leviathan":
+            for defender in self.defenders[:]:
+                if defender.row == enemy.row and defender.stats.get("water_only"):
+                    self.damage_defender(defender, self.scaled_enemy_damage(enemy, 14))
+                    defender.stun = max(defender.stun, 1.2)
+            enemy.skill_timer = 18.0
+            self.announce("LEVIATÃ: uma onda de entrada atingiu a faixa de água.", 2.4, (95, 195, 239))
+        else:
+            enemy.skill_timer = 12.0
+
+    @staticmethod
+    def enemy_projectile_origin(enemy: Enemy, kind: str) -> tuple[float, float]:
+        """Ponto anatômico/equipamento de onde cada ataque realmente parte."""
+        category = "boss" if enemy.is_boss else ("subboss" if enemy.data.get("subboss") else "common")
+        body_height, source_height = ENEMY_BODY_LAYOUTS[category]
+        depth = lane_depth(enemy.region, enemy.row)
+        dx, height_ratio = ENEMY_ATTACK_ORIGINS.get(kind, (-16.0, 0.55))
+        emitter_height = body_height * height_ratio
+        animation = enemy.visual_animation
+        if animation is not None and animation.state == "skill":
+            dx, emitter_height = sprite_emitter_contact(
+                animation.frame,
+                dx,
+                emitter_height,
+                body_height=body_height,
+                source_body_height=source_height,
+                facing=-1,
+            )
+        return enemy.x + dx * depth, enemy.y - emitter_height * depth
+
+    @staticmethod
+    def enemy_effect_origin(enemy: Enemy, kind: str) -> tuple[float, float]:
+        """Ancora efeitos no chão, na água ou no corpo conforme a habilidade."""
+        if kind in {"ground_slam", "tidal_surge", "water_splash"}:
+            return enemy.x, enemy.y - 12 * lane_depth(enemy.region, enemy.row)
+        if kind == "toxic_wave":
+            return Battle.enemy_projectile_origin(enemy, "acid")
+        category = "boss" if enemy.is_boss else ("subboss" if enemy.data.get("subboss") else "common")
+        body_height, source_height = ENEMY_BODY_LAYOUTS[category]
+        depth = lane_depth(enemy.region, enemy.row)
+        animation = enemy.visual_animation
+        if kind == "supply_snatch" and animation is not None:
+            forward, height = sprite_emitter_contact(
+                animation.frame,
+                -14.0,
+                body_height * 0.52,
+                body_height=body_height,
+                source_body_height=source_height,
+                facing=-1,
+            )
+            return enemy.x + forward * depth, enemy.y - height * depth
+        if kind in {
+            "arcane_cast", "electric_arc", "signal_pulse", "heal_pulse",
+            "heal_receive", "command_aura", "parasite_burst",
+        } and animation is not None:
+            # A aura acompanha o torso visível da pose atual. O sistema antigo
+            # usava sempre x-8/y-48 e deixava cruz, parasita ou pulso flutuando
+            # quando o zumbi inclinava o corpo durante a habilidade.
+            frame = animation.frame
+            bounds = frame.get_bounding_rect(min_alpha=8)
+            if bounds.width > 0 and bounds.height > 0:
+                source_x = bounds.centerx
+                vertical_ratio = 0.58 if kind == "parasite_burst" else 0.44
+                source_y = bounds.top + bounds.height * vertical_ratio
+                ratio = body_height / max(1.0, source_height)
+                forward = (source_x - frame.get_width() / 2) * ratio
+                height = (frame.get_height() - source_y) * ratio
+                return enemy.x + forward * depth, enemy.y - height * depth
+        if kind in {"arcane_cast", "electric_arc", "signal_pulse", "heal_pulse", "heal_receive", "supply_snatch", "command_aura", "parasite_burst"}:
+            return enemy.x - 8 * depth, enemy.y - (64 if enemy.is_boss else 48) * depth
+        return enemy.x, enemy.y - 30 * lane_depth(enemy.region, enemy.row)
+
+    @staticmethod
+    def enemy_skill_duration(enemy: Enemy, fallback: float = 0.62) -> float:
+        """Usa exatamente o relógio da sprite para corpo e efeito terminarem juntos."""
+        if enemy.visual_animation is not None:
+            clip = enemy.visual_animation.animations.get("skill")
+            if clip is not None:
+                return max(0.01, clip.duration)
+        return fallback
+
+    def boss_skill(self, enemy: Enemy) -> None:
+        """Habilidade recorrente, sempre mais justa que a entrada do chefe."""
+        boss_type = enemy.data.get("type", "")
+        cooldowns = {
+            "bruto_demolidor": 18.0,
+            "comandante": 14.0,
+            "alfa": 14.0,
+            "mutante": 14.0,
+            "necromante": 15.0,
+            "colosso": 18.0,
+            "tide": 14.0,
+            "hunter": 13.0,
+            "leviathan": 18.0,
+        }
+        enemy.skill_timer = cooldowns.get(boss_type, 12.0) * float(self.difficulty_data["skill_cooldown"])
+        skill_duration = self.enemy_skill_duration(enemy)
+        enemy.motion.trigger("skill", skill_duration)
+        if enemy.visual_animation is not None and "skill" in enemy.visual_animation.animations:
+            enemy.visual_animation.play("skill", restart=True)
+        self.shake = max(self.shake, 0.24)
+        skill_visuals = {
+            "bruto_demolidor": ("ground_slam", (230, 91, 61)),
+            "comandante": ("command_aura", (232, 77, 62)),
+            "alfa": ("toxic_wave", (132, 239, 80)),
+            "mutante": ("ground_slam", (225, 152, 70)),
+            "necromante": ("arcane_cast", (197, 128, 238)),
+            "colosso": ("ground_slam", (227, 163, 81)),
+            "tide": ("tidal_surge", (95, 195, 239)),
+            "hunter": ("tidal_surge", (95, 195, 239)),
+            "leviathan": ("tidal_surge", (95, 195, 239)),
+        }
+        visual_kind, visual_color = skill_visuals.get(str(boss_type), ("ground_slam", RED))
+        effect_x, effect_y = self.enemy_effect_origin(enemy, visual_kind)
+        self.effects.append(
+            VisualEffect(
+                visual_kind,
+                effect_x,
+                effect_y,
+                visual_color,
+                skill_duration,
+                scale=1.0,
+                owner=enemy,
+                anchor_kind=visual_kind,
+            )
+        )
+
+        if boss_type == "bruto_demolidor":
+            # Regra central do primeiro chefe: sem stun global repetido. O
+            # martelo fecha somente a faixa na qual o chefe está por 1,2 s.
+            targets = [d for d in self.defenders if d.row == enemy.row and self.is_military_defender(d)]
+            for defender in targets:
+                defender.stun = max(defender.stun, 1.2)
+                self.pulse(defender.x, defender.y - 22, RED, 7)
+            self.announce(f"Martelo do Bruto: faixa {enemy.row + 1} interrompida por 1,2 s.", 2.0, RED)
+        elif boss_type == "comandante":
+            escorts = [
+                other for other in self.enemies
+                if other is not enemy and abs(other.row - enemy.row) <= 1 and abs(other.x - enemy.x) < CELL_W * 2.8
+            ]
+            for other in escorts:
+                other.rage = max(other.rage, 2.2)
+            targets = [d for d in self.defenders if d.row == enemy.row and d.x < enemy.x and enemy.x - d.x < CELL_W * 4.5]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                for vertical in (-11, 9):
+                    damage = self.scaled_enemy_damage(enemy, 10)
+                    origin_x, origin_y = self.enemy_projectile_origin(enemy, "enemy_bullet")
+                    self.projectiles.append(Projectile(origin_x, origin_y + vertical, victim, victim.x, victim.y - 24, damage, "enemy_bullet", enemy, 0, False, 0.32))
+            self.announce("Comandante: escolta próxima acelerada e rajada dupla disparada.", 1.9, RED)
+        elif boss_type == "alfa":
+            targets = [d for d in self.defenders if d.row == enemy.row and d.x < enemy.x and enemy.x - d.x < CELL_W * 4.0]
+            for victim in sorted(targets, key=lambda defender: defender.x, reverse=True)[:1]:
+                damage = self.scaled_enemy_damage(enemy, 10)
+                origin_x, origin_y = self.enemy_projectile_origin(enemy, "acid")
+                self.projectiles.append(Projectile(origin_x, origin_y, victim, victim.x, victim.y - 18, damage, "acid", enemy, 0, False, 0.45, effect="acid_brief"))
+            self.announce(f"Cuspidor Alfa: saliva corrosiva na faixa {enemy.row + 1}.", 1.8, (150, 232, 112))
+        elif boss_type == "mutante":
+            for defender in self.defenders[:]:
+                if defender.row == enemy.row and abs(defender.x - enemy.x) < CELL_W * 2.15:
+                    self.damage_defender(defender, self.scaled_enemy_damage(enemy, 12))
+                    defender.stun = max(defender.stun, 1.0)
+            self.announce(f"Mutante: punho de ruína na faixa {enemy.row + 1}.", 1.8, RED)
+        elif boss_type == "necromante":
+            self.enemies.append(Enemy("necromante_minion", enemy.row, ENEMIES["necromante_minion"], self.region, self.wave, difficulty=self.difficulty, x=enemy.x + 42))
+            for other in self.enemies:
+                if other is not enemy and abs(other.x - enemy.x) < CELL_W * 1.65:
+                    other.hp = min(other.max_hp, other.hp + 28)
+            self.announce("Necromante: novas múmias e cura localizada da escolta.", 2.0, (197, 128, 238))
+        elif boss_type == "colosso":
+            targets = [d for d in self.defenders if d.x < enemy.x and enemy.x - d.x < CELL_W * 4.0]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                damage = self.scaled_enemy_damage(enemy, 18)
+                origin_x, origin_y = self.enemy_projectile_origin(enemy, "mortar")
+                self.projectiles.append(Projectile(origin_x, origin_y, victim, victim.x, victim.y - 24, damage, "mortar", enemy, 0, False, 0.52))
+            self.announce("Colosso: rocha arremessada contra uma faixa-alvo.", 1.9, RED)
+        elif boss_type == "tide":
+            targets = [d for d in self.defenders if d.row == enemy.row and d.stats.get("water_only") and d.x < enemy.x]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                self.damage_defender(victim, self.scaled_enemy_damage(enemy, 12))
+                victim.stun = max(victim.stun, 0.8)
+            self.announce("Bruto da Maré: golpe concentrado no canal.", 1.8, (95, 195, 239))
+        elif boss_type == "hunter":
+            enemy.x = max(BOARD.left + CELL_W * 3.4, enemy.x - CELL_W * 0.85)
+            targets = [d for d in self.defenders if d.row == enemy.row and d.stats.get("water_only") and d.x < enemy.x]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                self.damage_defender(victim, self.scaled_enemy_damage(enemy, 10))
+                victim.stun = max(victim.stun, 0.7)
+            self.announce("Caçador Abissal: mergulho ofensivo no canal.", 1.8, (95, 195, 239))
+        elif boss_type == "leviathan":
+            targets = [d for d in self.defenders if d.row == enemy.row and d.stats.get("water_only") and d.x < enemy.x]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                damage = self.scaled_enemy_damage(enemy, 24)
+                origin_x, origin_y = self.enemy_projectile_origin(enemy, "torpedo")
+                self.projectiles.append(Projectile(origin_x, origin_y, victim, victim.x, victim.y - 12, damage, "torpedo", enemy, 0, False, 0.42))
+            self.announce("LEVIATÃ: jato de pressão concentrado na faixa de água.", 2.0, (95, 195, 239))
+
+    def enemy_special(self, enemy: Enemy) -> None:
+        if enemy.is_boss:
+            self.boss_skill(enemy)
+            return
+        # Inimigos básicos e rastejadores não fingem possuir um poder. A ação
+        # especial só toca quando existe uma regra real associada à ficha.
+        # Mordida e devorar continuam usando o estado físico de ataque.
+        active_tags = ACTIVE_ENEMY_SKILL_TAGS.intersection(enemy.tags)
+        if not active_tags:
+            enemy.skill_timer = 9999.0
+            return
+        skill_duration = (
+            enemy.visual_animation.animations["skill"].duration
+            if enemy.visual_animation is not None
+            and "skill" in enemy.visual_animation.animations
+            else 0.61
+        )
+        enemy.motion.trigger("skill", skill_duration)
+        if enemy.visual_animation is not None and "skill" in enemy.visual_animation.animations:
+            # Bala, ácido, rede e demais efeitos consultam exatamente o quadro
+            # de habilidade que começou agora, nunca a pose de caminhada.
+            enemy.visual_animation.play("skill", restart=True)
+        self.app.audio.play("ability", min_interval_ms=140)
+        # No Difícil os poderes inimigos retornam um pouco antes. No Fácil o
+        # multiplicador é 1, portanto o equilíbrio aprovado não se altera.
+        enemy.skill_timer = random.uniform(3.4, 5.8) * float(self.difficulty_data["skill_cooldown"])
+        if "runner" in enemy.tags:
+            # O Corredor não teleporta nem dá dash: a folha mostra a passada
+            # sustentada, enquanto a regra mantém velocidade constante e o
+            # primeiro ataque dobrado definidos na própria ficha.
+            enemy.rage = 0.0
+        if "signal_jammer" in enemy.tags:
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "signal_pulse")
+            self.effects.append(
+                VisualEffect(
+                    "signal_pulse",
+                    effect_x,
+                    effect_y,
+                    TEAL,
+                    skill_duration,
+                    scale=0.72,
+                    owner=enemy,
+                    anchor_kind="signal_pulse",
+                )
+            )
+            for defender in self.defenders:
+                if defender.row == enemy.row and 0 < enemy.x - defender.x < CELL_W * 2.7:
+                    defender.attack_timer = max(defender.attack_timer, 0.72)
+        if "dash" in enemy.tags:
+            # O Surfista acelera por uma janela visível; a posição continua
+            # avançando quadro a quadro e passa pela colisão varrida normal.
+            enemy.rage = max(enemy.rage, 1.15)
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "water_splash")
+            self.effects.append(VisualEffect("water_splash", effect_x, effect_y, (84, 196, 203), skill_duration, scale=0.62, owner=enemy, anchor_kind="water_splash"))
+        if "naval_hunter" in enemy.tags:
+            enemy.rage = max(enemy.rage, 0.86)
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "water_splash")
+            self.effects.append(VisualEffect("water_splash", effect_x, effect_y, (84, 196, 203), skill_duration, scale=0.55, owner=enemy, anchor_kind="water_splash"))
+        if "gun" in enemy.tags:
+            targets = [d for d in self.defenders if d.row == enemy.row and d.x < enemy.x and enemy.x - d.x < CELL_W * 4]
+            if targets:
+                victim = max(targets, key=lambda d: d.x)
+                damage = self.scaled_enemy_damage(enemy, 20)
+                origin_x, origin_y = self.enemy_projectile_origin(enemy, "enemy_bullet")
+                self.projectiles.append(Projectile(origin_x, origin_y, victim, victim.x, victim.y - 20, damage, "enemy_bullet", enemy, 0, False, 0.30))
+        if "acid" in enemy.tags:
+            targets = [d for d in self.defenders if d.row == enemy.row and d.x < enemy.x and enemy.x - d.x < CELL_W * 3.2]
+            if targets:
+                victim = max(targets, key=lambda d: d.x)
+                damage = self.scaled_enemy_damage(enemy, 16)
+                origin_x, origin_y = self.enemy_projectile_origin(enemy, "acid")
+                self.projectiles.append(Projectile(origin_x, origin_y, victim, victim.x, victim.y - 18, damage, "acid", enemy, CELL_W * 0.34, False, 0.48, effect="acid"))
+        if "shock" in enemy.tags:
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "signal_pulse")
+            self.effects.append(VisualEffect("signal_pulse", effect_x, effect_y, TEAL, skill_duration, scale=0.76, owner=enemy, anchor_kind="signal_pulse"))
+            targets = [
+                defender for defender in self.defenders
+                if defender.row == enemy.row and defender.x < enemy.x
+                and enemy.x - defender.x < CELL_W * 2.4
+            ]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                victim.stun = max(victim.stun, 0.72)
+                victim.attack_timer = max(victim.attack_timer, 0.72)
+                self.effects.append(VisualEffect("electric_arc", victim.x, victim.y, TEAL, 0.42, scale=0.62))
+                self.announce("Pulso da subestação: recarga atrasada.", 1.2, TEAL)
+        if "net" in enemy.tags:
+            targets = [
+                defender for defender in self.defenders
+                if defender.row == enemy.row and defender.x < enemy.x
+                and enemy.x - defender.x < CELL_W * 3.0
+            ]
+            if targets:
+                victim = max(targets, key=lambda defender: defender.x)
+                victim.stun = max(victim.stun, 0.58)
+                victim.attack_timer = max(victim.attack_timer, 1.05)
+                self.effects.append(VisualEffect("net_cast", victim.x, victim.y - 30, (84, 196, 203), min(skill_duration, 0.72), scale=0.70))
+                self.announce("Rede contaminada: cadência reduzida.", 1.2, (84, 196, 203))
+        if "scream" in enemy.tags:
+            self.effects.append(VisualEffect("command_aura", enemy.x, enemy.y, RED, skill_duration, scale=0.72, owner=enemy, anchor_kind="command_aura"))
+            for other in self.enemies:
+                if other.row == enemy.row and abs(other.x - enemy.x) < CELL_W * 2.6:
+                    other.rage = max(other.rage, 3.5)
+            if random.random() < 0.36:
+                self.enemies.append(Enemy("caminhante" if self.region != "beach" else "boia", enemy.row, ENEMIES["caminhante" if self.region != "beach" else "boia"], self.region, self.wave, difficulty=self.difficulty, x=BOARD.right + 20))
+            self.announce("Grito: a horda ganhou velocidade.", 1.2, RED)
+        if "heal" in enemy.tags:
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "heal_pulse")
+            self.effects.append(VisualEffect("heal_pulse", effect_x, effect_y, (154, 239, 134), skill_duration, scale=0.76, owner=enemy, anchor_kind="heal_pulse"))
+            nearby = [
+                other for other in self.enemies
+                if other is not enemy
+                and other.row == enemy.row
+                and abs(other.x - enemy.x) < CELL_W * 1.8
+            ]
+            for other in nearby:
+                other.hp = min(other.max_hp, other.hp + 42)
+                self.effects.append(
+                    VisualEffect(
+                        "heal_receive",
+                        other.x,
+                        other.y - 34,
+                        (154, 239, 134),
+                        skill_duration,
+                        scale=0.52,
+                        owner=other,
+                        anchor_kind="heal_receive",
+                    )
+                )
+            if self.dead_history and not enemy.revived and random.random() < 0.4:
+                same_lane_dead = next(
+                    (
+                        (key, row, x)
+                        for key, row, x in reversed(self.dead_history)
+                        if row == enemy.row
+                    ),
+                    None,
+                )
+                if same_lane_dead is not None:
+                    key, row, x = same_lane_dead
+                else:
+                    key = ""
+                    row = enemy.row
+                    x = enemy.x
+                if key in ENEMIES:
+                    revived = Enemy(key, row, ENEMIES[key], self.region, self.wave, difficulty=self.difficulty, x=x + 42)
+                    revived.hp = revived.max_hp * 0.40
+                    self.enemies.append(revived)
+                    enemy.revived = True
+        if "parasite" in enemy.tags:
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "parasite_burst")
+            self.effects.append(VisualEffect("parasite_burst", effect_x, effect_y, (218, 106, 76), skill_duration, scale=0.70, owner=enemy, anchor_kind="parasite_burst"))
+            for defender in self.defenders:
+                if defender.row == enemy.row and defender.x < enemy.x and enemy.x - defender.x < CELL_W * 2.1:
+                    defender.stun = max(defender.stun, 2.6)
+            self.announce("Parasita: tiro das tropas foi desabilitado.", 1.4, RED)
+        if "stomp" in enemy.tags:
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "ground_slam")
+            self.effects.append(VisualEffect("ground_slam", effect_x, effect_y, (223, 132, 73), skill_duration, scale=0.84, owner=enemy, anchor_kind="ground_slam"))
+            for defender in self.defenders:
+                if defender.row == enemy.row and abs(defender.x - enemy.x) < CELL_W * 1.8:
+                    self.damage_defender(defender, self.scaled_enemy_damage(enemy, 24), "stun")
+        if "steal" in enemy.tags:
+            effect_x, effect_y = self.enemy_effect_origin(enemy, "supply_snatch")
+            self.effects.append(VisualEffect("supply_snatch", effect_x, effect_y, GOLD, skill_duration, scale=0.68, owner=enemy, anchor_kind="supply_snatch"))
+            stolen = min(18, self.supplies)
+            self.supplies -= stolen
+            enemy.stolen += stolen
+            self.announce("Ladrão de Suprimentos roubou carga — clique nele!", 2.0, GOLD)
 
     def update_enemies(self, dt: float) -> None:
         for enemy in self.enemies[:]:
@@ -788,12 +1869,9 @@ class Battle(EnemyMotionMixin, CombatActionsMixin, EnemyAbilityMixin):
             return
         if self.paused:
             return
-        if getattr(self.app, "pending_powerup", None):
-            self.app.try_use_powerup(pos)
-            return
         if self.remove_rect().collidepoint(pos):
             self.remove_mode = not self.remove_mode
-            self.announce("Voltar à base: clique na tropa que deseja recolher." if self.remove_mode else "Retorno à base desativado.", 1.8, TEAL)
+            self.announce("Ferramenta de remoção ativada: clique em uma defesa." if self.remove_mode else "Ferramenta de remoção desativada.", 1.8, TEAL)
             return
         if self.next_wave_rect().collidepoint(pos):
             if not self.started_wave:

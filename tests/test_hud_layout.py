@@ -66,31 +66,6 @@ class HudLayoutTests(unittest.TestCase):
         self.game.handle_click(b.pause_rect().center)
         self.assertFalse(b.paused)
 
-    def test_recall_button_uses_base_language_and_not_shovel_label(self):
-        self.battle()
-        renderer=self.game.renderer
-        with patch.object(renderer,'draw_text',wraps=renderer.draw_text) as text:
-            renderer.draw_battle_top()
-        labels=[call.args[0] for call in text.call_args_list]
-        self.assertIn("VOLTAR À BASE",labels)
-        self.assertIn("35% DEVOLVIDO",labels)
-        self.assertNotIn("REMOVER",labels)
-
-    def test_long_base_button_label_fits_existing_hud_button(self):
-        rect=hud.remove_rect()
-        font=self.game.renderer._fit_button_font("VOLTAR À BASE",rect)
-        self.assertLessEqual(font.size("VOLTAR À BASE")[0],rect.width-14)
-        self.assertLess(font.get_height(),self.game.fonts.h2.get_height())
-
-    def test_recall_mode_uses_base_message(self):
-        b=self.battle()
-        self.game.handle_click(b.remove_rect().center)
-        self.assertTrue(b.remove_mode)
-        self.assertIn("Voltar à base",b.message)
-        self.game.handle_click(b.remove_rect().center)
-        self.assertFalse(b.remove_mode)
-        self.assertIn("Retorno à base desativado",b.message)
-
     def test_menu_keeps_battle_for_continue(self):
         b=self.battle()
         with patch.object(self.game,'checkpoint',return_value=True):

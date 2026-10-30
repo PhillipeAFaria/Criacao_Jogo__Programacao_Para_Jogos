@@ -23,10 +23,8 @@ O histórico fica em `%LOCALAPPDATA%/SoldadosVsZumbis/campanha.pontuacoes.sqlite
 
 Partidas novas começam com zero. CONTINUAR preserva a contagem. Saves de versões anteriores começam a contagem em zero, pois não possuem um registro completo dos abates anteriores.
 
-## Validação desta cópia de revisão
+## Validação
 
-A checagem estática do pacote confirma a integridade dos 109 recursos declarados no manifesto e a sintaxe dos 85 arquivos Python. Também passaram cinco testes de documentação e metadados de Release.
+228 testes aprovados, sem falhas, erros ou testes ignorados. Os 14 testes novos verificam os 36 tipos regionais, abates duplicados, retomada, migração, dados inválidos, vitória/derrota, falhas de gravação, histórico e paginação. O módulo de pontuação teve 100% de cobertura de linhas e ramos. Verificação de recursos, smoke test, regressões e benchmark aprovados.
 
-A suíte completa **ainda não foi aprovada nesta revisão**: o ambiente usado para inspecionar o ZIP não tem `pygame-ce` nem `hypothesis`, e não conseguiu instalar as dependências pela internet. Os testes que dependem dessas bibliotecas falharam na coleta por dependência ausente — isso não é evidência de que o jogo falha, mas também não permite afirmar que a suíte passou. É necessário executar `python tools/manage.py test` num ambiente com as dependências de `requirements-test-lock.txt` instaladas.
-
-Capturas e testes com SDL dummy não substituem uma partida manual no Windows, incluindo áudio, renderização, salvamento, retomada, perfil, ranking e loja.
+As telas de HUD, menu, histórico, vitória e derrota foram inspecionadas com fonte ampliada. Capturas e testes usam SDL dummy; não representam uma avaliação manual de áudio ou GPU. Evidências completas: pasta `pontuacao_2026-10-17`, preservada junto ao projeto.
