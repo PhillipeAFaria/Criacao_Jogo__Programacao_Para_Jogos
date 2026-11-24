@@ -6,6 +6,8 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 
+from svz.visual_layout import enemy_body_layout
+
 import svz.api as main
 from svz.visual_layout import (
     DEFENDER_INTERACTIONS,
@@ -247,8 +249,7 @@ class VisualLayoutTests(unittest.TestCase):
             actor = main.ENEMY_ACTOR_BY_KEY[key]
             enemy.visual_animation = main.new_production_animation(clips, actor)
             enemy.visual_animation.play("skill", restart=True)
-            category = "boss" if enemy.is_boss else ("subboss" if data.get("subboss") else "common")
-            body_height, source_height = main.ENEMY_BODY_LAYOUTS[category]
+            body_height, source_height = enemy_body_layout(enemy)
             depth = main.lane_depth(enemy.region, enemy.row)
             for index, frame in enumerate(enemy.visual_animation.animations["skill"].frames):
                 enemy.visual_animation.seek_frame(index)

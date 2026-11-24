@@ -1,4 +1,4 @@
-"""Regressões do botão REMOVER em todos os mapas e dificuldades."""
+"""Regressões do botão VOLTAR À BASE em todos os mapas e dificuldades."""
 import math
 import os
 from pathlib import Path
@@ -50,7 +50,7 @@ class RemovalTests(unittest.TestCase):
                 renderer = self.game.renderer
                 with patch.object(renderer, "button", wraps=renderer.button) as drawn:
                     self.game.draw()
-                buttons = [call.args for call in drawn.call_args_list if call.args[0] == "REMOVER"]
+                buttons = [call.args for call in drawn.call_args_list if call.args[0] == "VOLTAR À BASE"]
                 self.assertEqual(len(buttons), 1)
                 self.assertEqual(buttons[0][1], b.remove_rect())
                 for rect in (b.menu_rect(), b.pause_rect(), b.next_wave_rect()):

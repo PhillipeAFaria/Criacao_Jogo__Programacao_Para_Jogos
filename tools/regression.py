@@ -104,8 +104,13 @@ def main() -> None:
                     surface_ok(surface, (actor, state))
                     actor_frames += 1
         scenario_counts = {}
-        for name in ('generals', 'city_lieutenant', 'beach_alarm', 'brazier', 'aquatic_mine', 'land_charge', 'tractor', 'drone', 'splash'):
+        scenario_assets = ('brazier', 'aquatic_mine', 'land_charge', 'tractor', 'drone', 'splash')
+        if args.layout == 'original':
+            scenario_assets = ('generals', 'city_lieutenant', 'beach_alarm') + scenario_assets
+        for name in scenario_assets:
             frames = getattr(game.scenario_runtime, name)
+            if isinstance(frames, pygame.Surface):
+                frames = [frames]
             assert frames, f'Missing mandatory scenario frames: {name}'
             if name == 'generals':
                 assert all(frames), 'Missing regional general'
@@ -145,6 +150,12 @@ def main() -> None:
                 random.seed(seed)
                 game.scene = 'title'
                 game.handle_key(pygame.K_RETURN)
+                if game.scene == 'profile':
+                    # A Alfa exige cadastro antes da primeira partida.
+                    # Exercita o fluxo real em vez de dispensar a validação.
+                    snapshot('profile')
+                    game.profile_name_draft = 'Regressao'
+                    game.handle_key(pygame.K_RETURN)
                 assert game.scene == 'difficulty'
                 game.handle_key(pygame.K_1 + difficulty_index)
                 assert game.scene == 'campaign' and game.difficulty == difficulty
@@ -236,8 +247,16 @@ def main() -> None:
                     assert not waves.orders, f'Wave stalled: {region}/{difficulty}/{wave}'
                     spawned_keys = [enemy.key for enemy in waves.enemies]
                     assert spawned_keys[:len(orders)] == [order['key'] for order in orders]
-                    expected_extra = ['necromante_minion'] if expected_boss and api.BOSSES[expected_boss].get('type') == 'necromante' else []
-                    assert spawned_keys[len(orders):] == expected_extra
+                    # Na versão final, o Necromante só prepara a invocação
+                    # se houver uma defesa ao alcance. Aqui o campo está vazio.
+                    original_necromancer = (
+                        args.layout == 'original' and expected_boss
+                        and api.BOSSES[expected_boss].get('type') == 'necromante'
+                    )
+                    expected_extra = ['necromante_minion'] if original_necromancer else []
+                    assert spawned_keys[len(orders):] == expected_extra, (
+                        region, difficulty, wave, spawned_keys[len(orders):], expected_extra
+                    )
                     if expected_boss:
                         assert warning_seen
                         boss = next(enemy for enemy in waves.enemies if enemy.key == expected_boss)

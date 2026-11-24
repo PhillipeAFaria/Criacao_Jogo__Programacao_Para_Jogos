@@ -105,8 +105,3 @@ class ControlesAudioDificuldadeTests(unittest.TestCase):
             self.assertEqual(enemy_wave_scale(wave),1.0)
             self.assertEqual(enemy_damage_scale(wave),1.0)
             self.assertEqual(boss_wave_scale(wave),1.0)
-
-
-
-if __name__ == "__main__":
-    unittest.main()

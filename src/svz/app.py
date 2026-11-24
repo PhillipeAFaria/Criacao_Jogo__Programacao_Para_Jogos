@@ -24,6 +24,7 @@ from .config import (
     FPS,
     GOLD,
     GRAY,
+    RED,
     HEIGHT,
     LAST_PLACEABLE_COLUMN,
     ROWS,
@@ -36,7 +37,6 @@ from .content import (
     BOSSES,
     DEFENSES,
     ENEMIES,
-    PROMOTIONS,
     REGIONS,
     REGION_BOSSES,
     REGION_ENEMIES,
@@ -46,11 +46,17 @@ from .content import (
 from .entities import (
     Defender,
     Enemy,
+    FloatingText,
     Projectile,
 )
 from .motion import (
     ActorMotion,
     VisualEffect,
+)
+from .rendering_geometry import (
+    flow_points as geometry_flow_points,
+    ribbon_polygon as geometry_ribbon_polygon,
+    water_ribbon_polygon as geometry_water_ribbon_polygon,
 )
 from .persistence import (
     load_save,
@@ -67,6 +73,7 @@ from .timing import FixedStepper
 from .video import VideoDisplay
 from .session_store import SessionStore
 from .snapshot import capture, activate
+from .scoring import normalize_player_name, SHOP_ITEMS
 
 logger = logging.getLogger(__name__)
 AUTOSAVE_SECONDS = 10.0
@@ -76,7 +83,7 @@ class Game:
     def __init__(self, *, integration_preview: bool = False, save_path=None) -> None:
         self.renderer = GameRenderer(self)
         pygame.init()
-        pygame.display.set_caption(f"Soldados vs Zumbis — {VERSION}")
+        pygame.display.set_caption("Fábrica dos Mortos")
         self.presenter: OpenGLPresenter | None = None
         self.renderer_error = ""
         self.renderer_label = "SOFTWARE · CPU/RAM"
@@ -122,7 +129,14 @@ class Game:
         from .scoring import ScoreStore
         self.score_store = ScoreStore(save_path)
         self.score_page = 0
+        self.score_view = "ranking"
         self.score_rows, self.score_total = [], 0
+        self.profile_data = {"player_name": "", "credits": 0, "medkits": 0, "tactical_ammo": 0}
+        self.player_name = self.settings.player_name
+        self.profile_name_draft = self.player_name
+        self.profile_return_scene = "title"
+        self.profile_error = ""
+        self.pending_powerup: str | None = None
         self.save_path = save_path
         self.save_error = False
         campaign_notices = []
@@ -137,11 +151,8 @@ class Game:
         self.selection: list[tuple[str, str]] = []
         self.battle: Battle | None = None
         self.dossier_kind = "units"
-        self.dossier_page = 0
         self.character_region = "city"
         self.character_index = 0
-        self.selection_carousel_index = 0
-        self.selection_inspect_key: str | None = None
         self.story_page = 0
         self.hover_card: tuple[str, str] | None = None
 
@@ -167,7 +178,7 @@ class Game:
                     self.presenter = None
                 pygame.display.quit()
                 pygame.display.init()
-                pygame.display.set_caption(f"Soldados vs Zumbis — {VERSION}")
+                pygame.display.set_caption("Fábrica dos Mortos")
         self.video.create_mode()
         self.renderer_label = "SOFTWARE · CPU/RAM"
         self.overlay_surface = None
@@ -269,6 +280,8 @@ class Game:
                 # navegação escolhida pelo jogador nem abre o mapa sozinho.
                 self.scene = "title"
                 self.scene_elapsed = 0
+        elif self.scene == "developer":
+            self.developer_lab.update(dt)
         elif self.scene == "battle" and self.battle:
             was_finished = self.battle.finished
             previous_wave = self.battle.wave
@@ -290,6 +303,9 @@ class Game:
                 if self.settings.auto_pause and self.scene == "battle" and self.battle and self.battle.accepts_actions:
                     self.battle.paused = True
                     self.checkpoint()
+            elif event.type == pygame.TEXTINPUT and self.scene == "profile":
+                addition = "".join(character for character in event.text if character.isprintable())
+                self.profile_name_draft = (self.profile_name_draft + addition)[:20]
             elif event.type == pygame.KEYDOWN:
                 video_key = event.key == pygame.K_F11 or (
                     event.key == pygame.K_RETURN and getattr(event, "mod", 0) & pygame.KMOD_ALT)
@@ -320,12 +336,37 @@ class Game:
             self.toggle_fullscreen()
             return
         if key == pygame.K_ESCAPE:
-            if self.scene == "title":
+            if self.scene == "developer":
+                self.developer_lab.key(key)
+                return
+            if self.scene == "profile":
+                self.cancel_profile()
+            elif self.scene == "battle" and self.pending_powerup:
+                self.pending_powerup = None
+                if self.battle:
+                    self.battle.announce("Uso do consumível cancelado.", 1.3, GOLD)
+            elif self.scene == "title":
                 self.request_quit()
             elif self.scene == "battle":
                 self.leave_battle_to_title()
             else:
                 self.scene = "settings" if self.scene == "bindings" else "title"
+            return
+        if key == pygame.K_F12 and self.scene == "title":
+            from .developer_lab import DeveloperLab
+            self.developer_lab = DeveloperLab(self)
+            self.scene = "developer"
+            return
+        if self.scene == "developer":
+            self.developer_lab.key(key)
+            return
+        if self.scene == "profile":
+            if key == pygame.K_BACKSPACE:
+                self.profile_name_draft = self.profile_name_draft[:-1]
+            elif key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.save_profile()
+            elif key == pygame.K_a and mod & pygame.KMOD_CTRL:
+                self.profile_name_draft = ""
             return
         if key == pygame.K_F1 and self.scene == "battle":
             self.show_card_info = not self.show_card_info
@@ -365,6 +406,11 @@ class Game:
                 return
             if b.paused:
                 return
+            if key in (pygame.K_h, pygame.K_t):
+                self.pending_powerup = "medkit" if key == pygame.K_h else "tactical_ammo"
+                item = SHOP_ITEMS[self.pending_powerup]["label"].upper()
+                b.announce(f"{item}: clique no soldado que receberá o item. Esc cancela.", 3.0, GOLD)
+                return
             if pygame.K_1 <= key <= pygame.K_8:
                 choice = key - pygame.K_1
                 if choice < len(b.selected):
@@ -389,6 +435,9 @@ class Game:
                     b.start_next_wave()
 
     def handle_click(self, pos: tuple[int, int]) -> None:
+        if self.scene == "developer":
+            self.developer_lab.click(pos)
+            return
         if self.scene == "loading":
             return
         if self.scene != "battle":
@@ -408,15 +457,21 @@ class Game:
                     self.session_notice = self.session_store.error
         elif self.scene == "title":
             self.click_title(pos)
+        elif self.scene == "profile":
+            self.click_profile(pos)
         elif self.scene == "scores":
-            if pygame.Rect(50,645,170,46).collidepoint(pos):
+            if pygame.Rect(50, 645, 170, 46).collidepoint(pos):
                 self.scene = "title"
-            elif pygame.Rect(830,645,180,46).collidepoint(pos) and self.score_page > 0:
+            elif pygame.Rect(430, 645, 260, 46).collidepoint(pos):
+                self.score_view = "history" if self.score_view == "ranking" else "ranking"
+                self.score_page = 0
+                self.refresh_scores()
+            elif pygame.Rect(735, 645, 150, 46).collidepoint(pos) and self.score_page > 0:
                 self.score_page -= 1
-                self.score_rows, self.score_total = self.score_store.page(self.score_page)
-            elif pygame.Rect(1030,645,200,46).collidepoint(pos) and (self.score_page+1)*10 < self.score_total:
+                self.refresh_scores()
+            elif pygame.Rect(910, 645, 280, 46).collidepoint(pos) and (self.score_page + 1) * 10 < self.score_total:
                 self.score_page += 1
-                self.score_rows, self.score_total = self.score_store.page(self.score_page)
+                self.refresh_scores()
         elif self.scene == "difficulty":
             self.click_difficulty(pos)
         elif self.scene == "campaign":
@@ -438,8 +493,6 @@ class Game:
                     if self.binding_rect(i).collidepoint(pos):
                         self.binding_action = action
                         break
-        elif self.scene.startswith("dossier"):
-            self.click_dossier(pos)
         elif self.scene == "howto":
             if self.button_rect("Voltar", 50, 645, 170, 46).collidepoint(pos):
                 self.scene = "title"
@@ -455,18 +508,21 @@ class Game:
 
     def title_buttons(self) -> list[tuple[str, pygame.Rect]]:
         if self.can_continue():
-            labels = ("CONTINUAR", "NOVA PARTIDA", "PERSONAGENS", "HISTÓRIA DO JOGO",
-                      "CONFIGURAÇÕES", "COMO JOGAR", "PONTUAÇÕES", "SAIR")
-            return [(label, pygame.Rect(62, 264 + index * 49, 274, 40))
-                    for index, label in enumerate(labels)]
+            labels = (
+                "CONTINUAR", "NOVA PARTIDA", "PERFIL / LOJA", "PERSONAGENS",
+                "HISTÓRIA DO JOGO", "CONFIGURAÇÕES", "COMO JOGAR", "RANKING", "SAIR",
+            )
+            return [
+                (label, pygame.Rect(62, 250 + index * 44, 274, 37))
+                for index, label in enumerate(labels)
+            ]
+        labels = (
+            "INICIAR", "PERFIL / LOJA", "PERSONAGENS", "HISTÓRIA DO JOGO",
+            "CONFIGURAÇÕES", "COMO JOGAR", "RANKING", "SAIR",
+        )
         return [
-            ("INICIAR", pygame.Rect(62, 276, 274, 52)),
-            ("PERSONAGENS", pygame.Rect(62, 338, 274, 48)),
-            ("HISTÓRIA DO JOGO", pygame.Rect(62, 396, 274, 48)),
-            ("CONFIGURAÇÕES", pygame.Rect(62, 454, 274, 48)),
-            ("COMO JOGAR", pygame.Rect(62, 512, 274, 44)),
-            ("PONTUAÇÕES", pygame.Rect(62, 566, 274, 40)),
-            ("SAIR", pygame.Rect(62, 616, 274, 40)),
+            (label, pygame.Rect(62, 276 + index * 47, 274, 39))
+            for index, label in enumerate(labels)
         ]
 
     @staticmethod
@@ -544,9 +600,14 @@ class Game:
             if not rect.collidepoint(pos):
                 continue
             if label == "CONTINUAR":
-                self.resume_battle()
+                if self.player_name:
+                    self.resume_battle()
+                else:
+                    self.open_profile("resume")
             elif label in ("INICIAR", "NOVA PARTIDA"):
                 self.request_new_game()
+            elif label == "PERFIL / LOJA":
+                self.open_profile("title")
             elif label == "PERSONAGENS":
                 self.scene, self.dossier_kind, self.character_region = "characters", "units", "city"
             elif label == "HISTÓRIA DO JOGO":
@@ -555,9 +616,10 @@ class Game:
                 self.scene = "settings"
             elif label == "COMO JOGAR":
                 self.scene = "howto"
-            elif label == "PONTUAÇÕES":
+            elif label == "RANKING":
+                self.score_view = "ranking"
                 self.score_page = 0
-                self.score_rows, self.score_total = self.score_store.page(0)
+                self.refresh_scores()
                 self.scene = "scores"
             elif label == "SAIR":
                 self.request_quit()
@@ -632,15 +694,15 @@ class Game:
             self.scene = "title"
 
     def enter_selection(self, region: str) -> None:
+        self.pending_powerup = None
         self.region = region
         # Não há mais uma etapa de seleção pré-partida. Cada mapa entrega sua
         # equipe regional completa de oito cartas e inicia imediatamente.
         available = self.available_selection_keys(region)
         self.selection = [(key, self.card_display_name(region, key)) for key in available[:8]]
-        self.selection_carousel_index = 0
-        self.selection_inspect_key = None
         self.hover_card = None
         self.battle = Battle(self, region, self.selection[:])
+        self.battle.player_name = self.player_name or "Jogador"
         self.scene = "battle"
         self.checkpoint()
 
@@ -663,83 +725,6 @@ class Game:
             if roster_key == key:
                 return display
         return str(DEFENSES[key]["base"])
-
-    def selection_cards(self) -> list[tuple[str, str, pygame.Rect]]:
-        """Restaura a grade compacta usada antes de iniciar a partida."""
-        keys = self.available_selection_keys()
-        cards: list[tuple[str, str, pygame.Rect]] = []
-        for index, key in enumerate(keys):
-            row = index // 5
-            column = index % 5
-            row_count = min(5, len(keys) - row * 5)
-            row_width = row_count * 238 + max(0, row_count - 1) * 12
-            x = (WIDTH - row_width) // 2 + column * 250
-            y = 96 + row * 230
-            cards.append(
-                (key, self.card_display_name(self.region, key), pygame.Rect(x, y, 238, 215))
-            )
-        return cards
-
-    @staticmethod
-    def selection_inspect_button(card_rect: pygame.Rect) -> pygame.Rect:
-        return pygame.Rect(card_rect.x + 119, card_rect.bottom - 39, card_rect.width - 129, 27)
-
-    @staticmethod
-    def selection_inspection_close_rect() -> pygame.Rect:
-        return pygame.Rect(WIDTH // 2 - 105, 552, 210, 42)
-
-    def click_selection(self, pos: tuple[int, int]) -> None:
-        if self.selection_inspect_key is not None:
-            if self.selection_inspection_close_rect().collidepoint(pos):
-                self.selection_inspect_key = None
-            return
-        for key, display, rect in self.selection_cards():
-            if self.selection_inspect_button(rect).collidepoint(pos):
-                self.selection_inspect_key = key
-                return
-            if not rect.collidepoint(pos):
-                continue
-            item = (key, display)
-            if item in self.selection:
-                self.selection.remove(item)
-            elif len(self.selection) < 3:
-                self.selection.append(item)
-            return
-        launch = pygame.Rect(WIDTH - 290, 650, 240, 46)
-        if launch.collidepoint(pos):
-            if 1 <= len(self.selection) <= 3:
-                self.battle = Battle(self, self.region, self.selection[:])
-                self.scene = "battle"
-                self.checkpoint()
-            else:
-                return
-        if self.button_rect("Voltar", 45, 650, 160, 46).collidepoint(pos):
-            self.scene = "campaign"
-
-    def dossier_items(self) -> list[dict]:
-        if self.dossier_kind == "units":
-            regional_keys = set(self.regional_card_keys(self.region))
-            items = [
-                {"kind": "evolution", "l1": l1, "l2": l2}
-                for l1, l2 in PROMOTIONS.items()
-                if l1 in regional_keys and l2 in regional_keys
-            ]
-            if "instrutor" in regional_keys and self.difficulty == "hard":
-                items.append({"kind": "promoter", "key": "instrutor"})
-            return items
-        return [
-            {"name": data["name"], "sub": "Chefe" if key in BOSSES else "Inimigo", "ability": data["ability"], "hp": int(data["hp"]), "key": key}
-            for key, data in {**ENEMIES, **BOSSES}.items()
-        ]
-
-    def click_dossier(self, pos: tuple[int, int]) -> None:
-        if self.button_rect("Voltar", 40, 648, 160, 42).collidepoint(pos):
-            self.scene = "title"
-            return
-        if pygame.Rect(WIDTH - 180, 648, 140, 42).collidepoint(pos):
-            items = self.dossier_items()
-            pages = max(1, math.ceil(len(items) / 6))
-            self.dossier_page = (self.dossier_page + 1) % pages
 
     def finish_battle(self) -> None:
         if not self.battle:
@@ -783,10 +768,13 @@ class Game:
         return self.battle is not None or self.pending_snapshot is not None
 
     def checkpoint(self) -> bool:
+        if self.scene == "developer":
+            return True
         if self.battle is None:
             return True
+        score_ok = True
         if self.battle.finished:
-            self.score_store.record(self.battle)
+            score_ok = self.score_store.record(self.battle)
         try:
             self.pending_snapshot = capture(self.battle)
             ok = self.session_store.save(self.pending_snapshot)
@@ -796,10 +784,13 @@ class Game:
             self.session_notice = "Não foi possível salvar. A partida continua disponível nesta janela."
             ok = False
         self.autosave_elapsed = 0.0
-        return ok
+        if ok and not score_ok:
+            self.session_notice = self.score_store.error
+        return ok and score_ok
 
     def leave_battle_to_title(self) -> None:
         """Suspende a partida sem registrar vitória ou apagar o estado em memória."""
+        self.pending_powerup = None
         if self.battle is not None and self.battle.finished:
             self.finish_battle()
             return
@@ -828,6 +819,11 @@ class Game:
                     return False
         elif self.suspended_random is not None:
             random.setstate(self.suspended_random)
+        # A retomada usa o perfil ativo para os próximos pontos e consumíveis,
+        # conforme o contrato existente. Resultados já registrados não duplicam.
+        if self.player_name:
+            self.battle.player_name = self.player_name
+        self.pending_powerup = None
         self.region, self.difficulty = self.battle.region, self.battle.difficulty
         self.selection = self.battle.selected[:]
         self.battle.paused = not self.battle.finished
@@ -836,8 +832,197 @@ class Game:
         self.suspended_random = None
         return True
 
+    def refresh_scores(self) -> None:
+        if self.score_view == "history":
+            self.score_rows, self.score_total = self.score_store.page(self.score_page)
+        else:
+            self.score_rows, self.score_total = self.score_store.leaderboard(self.score_page)
+
+    @staticmethod
+    def profile_name_rect() -> pygame.Rect:
+        return pygame.Rect(320, 215, 640, 54)
+
+    @staticmethod
+    def profile_save_rect() -> pygame.Rect:
+        return pygame.Rect(485, 292, 310, 48)
+
+    @staticmethod
+    def profile_medkit_rect() -> pygame.Rect:
+        return pygame.Rect(220, 390, 400, 135)
+
+    @staticmethod
+    def profile_ammo_rect() -> pygame.Rect:
+        return pygame.Rect(660, 390, 400, 135)
+
+    @staticmethod
+    def profile_medkit_buy_rect() -> pygame.Rect:
+        return pygame.Rect(242, 499, 356, 23)
+
+    @staticmethod
+    def profile_ammo_buy_rect() -> pygame.Rect:
+        return pygame.Rect(682, 499, 356, 23)
+
+    def open_profile(self, return_scene: str = "title") -> None:
+        self.profile_return_scene = return_scene
+        self.profile_name_draft = self.player_name
+        self.profile_error = ""
+        # A leitura SQLite ocorre ao entrar na tela, não em cada quadro de desenho.
+        self.profile_data = (
+            self.score_store.profile(self.player_name)
+            if self.player_name
+            else {"player_name": "", "credits": 0, "medkits": 0, "tactical_ammo": 0}
+        )
+        if self.player_name and self.score_store.error:
+            self.profile_error = self.score_store.error
+        self.scene = "profile"
+        self.navigation.scene = None
+        try:
+            pygame.key.start_text_input()
+        except pygame.error:
+            pass
+
+    def cancel_profile(self) -> None:
+        try:
+            pygame.key.stop_text_input()
+        except pygame.error:
+            pass
+        self.profile_error = ""
+        self.scene = "title"
+
+    def save_profile(self) -> bool:
+        try:
+            name = normalize_player_name(self.profile_name_draft)
+        except ValueError as exc:
+            self.profile_error = str(exc)
+            return False
+        if not self.score_store.ensure_profile(name):
+            self.profile_error = self.score_store.error
+            return False
+        profile = self.score_store.profile(name)
+        if self.score_store.error:
+            self.profile_error = self.score_store.error
+            return False
+        self.player_name = name
+        self.settings.player_name = name
+        self.profile_data = profile
+        settings_saved = self.settings.save()
+        warning = ""
+        if not settings_saved:
+            warning = "Perfil criado, mas não foi possível salvar o nome nas configurações. Ele vale nesta sessão."
+        self.profile_error = ""
+        try:
+            pygame.key.stop_text_input()
+        except pygame.error:
+            pass
+        destination = self.profile_return_scene
+        self.scene = "title"
+        if destination == "difficulty":
+            self.request_new_game()
+        elif destination == "resume":
+            resumed = self.resume_battle()
+            if not resumed:
+                self.scene = "title"
+        elif destination == "title":
+            self.video_notice = f"Perfil ativo: {self.player_name}."
+            self.video_notice_left = 2.5
+        if warning:
+            self.video_notice = warning
+            self.video_notice_left = 5.0
+        return True
+
+    def click_profile(self, pos: tuple[int, int]) -> None:
+        if self.profile_name_rect().collidepoint(pos):
+            self.profile_error = ""
+            try:
+                pygame.key.start_text_input()
+            except pygame.error:
+                pass
+            return
+        if self.profile_save_rect().collidepoint(pos):
+            self.save_profile()
+            return
+        if self.profile_medkit_buy_rect().collidepoint(pos):
+            self.buy_shop_item("medkit")
+            return
+        if self.profile_ammo_buy_rect().collidepoint(pos):
+            self.buy_shop_item("tactical_ammo")
+            return
+        if pygame.Rect(50, 645, 170, 46).collidepoint(pos):
+            self.cancel_profile()
+
+    def buy_shop_item(self, item: str) -> bool:
+        if not self.player_name:
+            self.profile_error = "Salve um nome de jogador antes de comprar itens."
+            return False
+        if self.score_store.buy(self.player_name, item):
+            self.profile_data = self.score_store.profile(self.player_name)
+            label = SHOP_ITEMS[item]["label"]
+            self.profile_error = f"{label} comprado. O item fica no inventário deste perfil."
+            return True
+        self.profile_error = self.score_store.error
+        return False
+
+    def try_use_powerup(self, pos: tuple[int, int]) -> bool:
+        """Aplica o consumível na tropa clicada e mantém a partida pausável/salvável."""
+        battle = self.battle
+        item = self.pending_powerup
+        if battle is None or item not in SHOP_ITEMS:
+            self.pending_powerup = None
+            return False
+        if not battle.accepts_actions:
+            return False
+        target = next(
+            (defender for defender in reversed(battle.defenders)
+             if defender.hp > 0 and defender.hitbox().inflate(18, 18).collidepoint(pos)),
+            None,
+        )
+        if target is None:
+            battle.announce("Clique diretamente na tropa que receberá o consumível. Esc cancela.", 2.2, GOLD)
+            return False
+        if item == "medkit":
+            if target.hp >= target.max_hp:
+                battle.announce("Essa tropa não está ferida. Escolha uma tropa com vida perdida.", 2.0, GOLD)
+                return False
+            healed = min(target.max_hp - target.hp, max(25.0, target.max_hp * 0.45))
+            if not self.score_store.consume(battle.player_name, item):
+                self.pending_powerup = None
+                battle.announce(self.score_store.error, 2.0, RED)
+                return False
+            target.hp = min(target.max_hp, target.hp + healed)
+            target.motion.trigger("support", 0.9)
+            battle.texts.append(FloatingText(
+                f"+{int(round(healed))} VIDA", target.x, target.y - 50, TEAL, 1.2
+            ))
+            message = f"Kit médico usado em {target.display_name}: +{int(round(healed))} de vida."
+        else:
+            if target.max_ammo <= 0:
+                battle.announce("Essa tropa não usa munição recarregável. Escolha outra.", 2.0, GOLD)
+                return False
+            if target.tactical_ammo_timer > 0:
+                battle.announce("Essa tropa já está com munição tática ativa.", 2.0, GOLD)
+                return False
+            if not self.score_store.consume(battle.player_name, item):
+                self.pending_powerup = None
+                battle.announce(self.score_store.error, 2.0, RED)
+                return False
+            target.ammo = target.max_ammo
+            target.reload_timer = 0.0
+            target.reload_total = 0.0
+            target.tactical_ammo_timer = 30.0
+            target.motion.loop("idle")
+            message = f"Munição tática em {target.display_name}: sem gastar munição por 30 segundos."
+        self.pending_powerup = None
+        if battle.player_name:
+            self.profile_data = self.score_store.profile(battle.player_name)
+        battle.announce(message, 3.0, TEAL)
+        self.checkpoint()
+        return True
+
     def request_new_game(self) -> None:
         self.navigation.scene = None
+        if not self.player_name:
+            self.open_profile("difficulty")
+            return
         self.scene = "confirm_new" if self.can_continue() else "difficulty"
 
     def request_quit(self) -> None:
@@ -878,12 +1063,6 @@ class Game:
     def draw_campaign(self) -> None:
         return self.renderer.draw_campaign()
 
-    def draw_selection(self) -> None:
-        return self.renderer.draw_selection()
-
-    def draw_selection_inspection(self, key: str) -> None:
-        return self.renderer.draw_selection_inspection(key)
-
     def draw_characters(self) -> None:
         return self.renderer.draw_characters()
 
@@ -896,23 +1075,17 @@ class Game:
     def draw_story(self) -> None:
         return self.renderer.draw_story()
 
+    def draw_profile(self) -> None:
+        return self.renderer.draw_profile()
+
     def draw_settings(self) -> None:
         return self.renderer.draw_settings()
 
     def draw_howto(self) -> None:
         return self.renderer.draw_howto()
 
-    def draw_unit_evolution_dossier(self) -> None:
-        return self.renderer.draw_unit_evolution_dossier()
-
-    def draw_dossier(self) -> None:
-        return self.renderer.draw_dossier()
-
     def draw_battle(self) -> None:
         return self.renderer.draw_battle()
-
-    def draw_lane_guides(self, battle: Battle) -> None:
-        return self.renderer.draw_lane_guides(battle)
 
     def draw_lane_bombs(self, battle: Battle) -> None:
         return self.renderer.draw_lane_bombs(battle)
@@ -951,16 +1124,6 @@ class Game:
     def frame_has_muzzle_flash(sprite: pygame.Surface, defender: Defender) -> bool:
         return GameRenderer.frame_has_muzzle_flash(sprite, defender)
 
-    @staticmethod
-    def eased(value: float) -> float:
-        return GameRenderer.eased(value)
-
-    def draw_reload_action(self, defender: Defender, rect: pygame.Rect, scale: tuple[float, float], depth: float, progress: float) -> None:
-        return self.renderer.draw_reload_action(defender, rect, scale, depth, progress)
-
-    def draw_weapon_action(self, defender: Defender, rect: pygame.Rect, scale: tuple[float, float], depth: float) -> None:
-        return self.renderer.draw_weapon_action(defender, rect, scale, depth)
-
     def draw_defender(self, defender: Defender) -> None:
         return self.renderer.draw_defender(defender)
 
@@ -969,15 +1132,15 @@ class Game:
 
     @staticmethod
     def flow_points(start: tuple[float, float], end: tuple[float, float], elapsed: float, amplitude: float, count: int=18) -> list[tuple[int, int]]:
-        return GameRenderer.flow_points(start, end, elapsed, amplitude, count)
+        return geometry_flow_points(start, end, elapsed, amplitude, count)
 
     @staticmethod
     def ribbon_polygon(points: list[tuple[int, int]], start_width: float, end_width: float, *, taper_tip: bool=False) -> list[tuple[int, int]]:
-        return GameRenderer.ribbon_polygon(points, start_width, end_width, taper_tip=taper_tip)
+        return geometry_ribbon_polygon(points, start_width, end_width, taper_tip=taper_tip)
 
     @staticmethod
     def water_ribbon_polygon(points: list[tuple[int, int]], start_width: float, end_width: float, elapsed: float, phase: float=0.0) -> list[tuple[int, int]]:
-        return GameRenderer.water_ribbon_polygon(points, start_width, end_width, elapsed, phase)
+        return geometry_water_ribbon_polygon(points, start_width, end_width, elapsed, phase)
 
     def draw_pressurized_water(self, start: tuple[float, float], end: tuple[float, float], elapsed: float, depth: float, palette: tuple[tuple[int, int, int, int], ...]) -> None:
         return self.renderer.draw_pressurized_water(start, end, elapsed, depth, palette)
@@ -1008,9 +1171,6 @@ class Game:
 
     def ammo_bar(self, x: float, y: float, width: float, ratio: float) -> None:
         return self.renderer.ammo_bar(x, y, width, ratio)
-
-    def blit_sprite(self, sprite: pygame.Surface, x: float, y: float, width: float, height: float) -> None:
-        return self.renderer.blit_sprite(sprite, x, y, width, height)
 
     def blit_actor_in_rect(self, sprite: pygame.Surface, rect: pygame.Rect, body_height: int, *, source_body_height: float=130.0, outline: tuple[int, int, int] | None=None) -> pygame.Rect:
         return self.renderer.blit_actor_in_rect(sprite, rect, body_height, source_body_height=source_body_height, outline=outline)

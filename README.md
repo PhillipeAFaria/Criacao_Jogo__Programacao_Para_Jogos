@@ -1,83 +1,70 @@
-# Soldados vs Zumbis — 1.5.3
+# Fábrica dos Mortos
 
-Para enviar alterações ao GitHub, siga o [passo a passo de Git](docs/GITHUB_PASSO_A_PASSO.md).
+Jogo de estratégia 2D em Python/Pygame-CE, com três regiões, quatro faixas,
+oito cartas por região e campanha de 12 ondas. Inclui retomada de partida,
+perfil local, ranking e loja de consumíveis.
 
-Jogo de defesa por faixas para **Windows x64**. Escolha um dos três territórios, posicione tropas e sobreviva às 12 ondas de cada campanha.
+**Estado:** Alfa da Beta 5 integrada, versão técnica **1.6.0**. Combina a
+estrutura modular, perfis e loja com as melhorias de jogabilidade da 1.5.3.
+Construção local; nenhuma release foi publicada no GitHub.
 
-## Jogar
+## Jogar no Windows
 
-Abra **SoldadosVsZumbis.exe** ou **JOGAR.bat**. Não é necessário instalar Python. Mantenha `assets/` e `_internal/` junto do executável. As instruções e os controles estão no menu **COMO JOGAR**.
+1. Instale Python **3.12 x64**, com o Python Launcher (`py`).
+2. Execute `PREPARAR_AMBIENTE.bat` uma vez (requer internet).
+3. Execute `JOGAR.bat`.
 
-O pacote para enviar a outras pessoas fica em `dist/SoldadosVsZumbis-1.5.3-Windows-x64.zip`. O destinatário deve extrair a pasta inteira e abrir o executável.
+O código usa renderização por software por padrão. OpenGL é opcional:
+defina `SVZ_RENDERER=opengl` antes de abrir o jogo. Para jogar sem instalar Python, use o pacote Windows em `dist/` após a
+construção. Na árvore de desenvolvimento, `JOGAR.bat` executa os fontes;
+`SoldadosVsZumbis.exe` executa a construção local. `CRIAR_EXE.bat` recompila.
+
+## Controles principais
+
+- Mouse: menus, cartas e posicionamento de tropas.
+- P: pausar; Esc: voltar ao menu; F5: salvar; F11: tela cheia.
+- H: selecionar kit médico; T: selecionar munição tática. Clique na tropa;
+  Esc cancela. Compre os itens no perfil/loja antes da batalha.
+- Modo teclado e remapeamento: disponíveis em Configurações.
+- A retomada usa o perfil ativo para os próximos pontos e consumíveis.
+
+Campanha, perfil, pontuação e preferências ficam em
+`%LOCALAPPDATA%\SoldadosVsZumbis-Beta5`. No primeiro uso, se essa pasta ainda
+não existir, os dados da pasta antiga `SoldadosVsZumbis` são copiados sem alterar
+os originais. Não há sincronização posterior entre as versões. Falhas são
+registradas em `jogo.log` na pasta nova.
+
+## Melhorias integradas
+
+- Cinco segundos de preparação antes do primeiro zumbi; pausa e retomada preservam o contador.
+- Reserva de suprimentos sem teto; geradores e recompensas entregam o valor completo.
+- Vida e dano fixos por tipo de inimigo, preservando os ajustes por dificuldade.
+- Leitura de partidas nos schemas 1, 2 e 3, com gravação no schema 4.
 
 ## Organização
 
-| Caminho | Finalidade |
+| Pasta | Conteúdo |
 |---|---|
-| `SoldadosVsZumbis.exe`, `JOGAR.bat` | Abrir o jogo |
-| `assets/` | Somente os 109 recursos usados pela versão final e seu manifesto de integridade |
-| `_internal/` | Python e bibliotecas incluídos no executável; não mover isoladamente |
-| `src/svz/` | Código-fonte organizado por responsabilidade |
-| `tests/` | Testes da versão final |
-| `tools/` | Verificação, construção e empacotamento |
-| `docs/` | Pesquisa, decisões e resultados de validação |
-| `licenses/`, `CREDITOS.md` | Avisos das bibliotecas e procedência do áudio |
-| `dist/` | ZIP para distribuição e checksum |
+| `src/svz/` | Código do jogo |
+| `assets/` | Imagens, sons e manifesto de integridade |
+| `tests/` | Testes automatizados |
+| `tools/` | Verificação, diagnóstico, benchmark e build |
+| `docs/` | Guias atuais e relatório da revisão |
+| `docs/historico/` | Relatórios e evidências de versões anteriores |
+| `licenses/` | Licenças das dependências |
+| `reports/` | Saídas locais de validação e backup anterior à revisão |
 
-O progresso é salvo em `%LOCALAPPDATA%\SoldadosVsZumbis\campanha.json`; erros ficam em `jogo.log`, na mesma pasta. Esses dados pessoais não integram o ZIP.
+Não mova `assets/` nem altere sua estrutura sem atualizar as referências.
+Ambientes `.venv/`, builds e relatórios são locais e ignorados pelo Git.
 
-Para manutenção, consulte [DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md). A pesquisa e as evidências desta organização estão em [LANCAMENTO_E_VALIDACAO.md](docs/LANCAMENTO_E_VALIDACAO.md).
+## Documentação
 
-## Retomar uma partida
+- [Desenvolvimento e validação](docs/DESENVOLVIMENTO.md)
+- [Integração da 1.5.3 e migração de dados](docs/INTEGRACAO_1.6.0.md)
+- [Análise anterior da Alfa](docs/REVISAO_2026-10-30.md)
+- [Histórico de alterações](CHANGELOG.md)
+- [Contribuição](docs/CONTRIBUTING.md)
+- [Créditos](CREDITOS.md) e [licença](LICENSE)
 
-Use **CONTINUAR** no menu. A partida volta pausada; clique em **PAUSA** ou pressione **P**. Funciona também após fechar e abrir o jogo. O salvamento ocorre a cada dez segundos e ao sair normalmente; iniciar outra partida exige confirmação para substituir a atual.
-
-Confira a pesquisa e o funcionamento em [SALVAMENTO_E_RETOMADA.md](docs/SALVAMENTO_E_RETOMADA.md). Os documentos da versão 1.0.0 registram a organização anterior; a validação do salvamento fica em `docs/RESULTADOS_RETOMADA.json`.
-
-## Remover tropas
-
-O botão **REMOVER**, entre **PAUSA** e **PRÓXIMA**, funciona em todas as dificuldades. Clique nele e depois na casa da tropa. O atalho **R** alterna a ferramenta. A retirada devolve 35% do custo, arredondado para cima.
-
-A correção e a validação da versão 1.1.1 estão em [CORRECAO_HUD.md](docs/CORRECAO_HUD.md).
-
-## Tela cheia
-
-Em **CONFIGURAÇÕES → VÍDEO**, clique em **TELA CHEIA**. **F11** ou **Alt+Enter** alternam entre janela e tela cheia durante o jogo. A preferência é lembrada na próxima abertura, e a partida continua preservada. A imagem mantém a proporção; outras proporções de monitor podem apresentar margens pretas.
-
-Pesquisa, decisões e validação: [TELA_CHEIA.md](docs/TELA_CHEIA.md).
-
-
-## Revisão aplicada — 1.3.0
-
-Corrigidos os nove defeitos da auditoria. As ações respeitam pausa, término e
-recarga; derrota registra a onda atingida; menus aceitam teclado; ajuda,
-dificuldade e HUD mostram as regras atuais. Configurações guardam controle,
-áudio, teclas e tamanho de texto. O jogo pausa ao perder foco por padrão.
-
-**F5** salva a partida. **F1** mostra a ficha da carta selecionada. A última
-cópia anterior do salvamento permite recuperação automática. Em Configurações,
-ative texto ampliado, ajuste os volumes separados ou personalize as teclas.
-“Movimento reduzido” desativa o tremor da tela; mantém animações e clima.
-
-Documentação vigente: [CORRECOES_REVISAO_1.3.0.md](docs/CORRECOES_REVISAO_1.3.0.md).
-Os demais relatórios datados preservam o histórico e não substituem a validação
-da versão atual. O ZIP contém somente o necessário para jogar. Os fontes,
-testes, evidências e histórico local ficam na pasta de desenvolvimento.
-
-
-## Histórico — 1.3.1
-
-Os corredores avançam de frente para a base nos três mapas. Corrigida a
-inversão da corrida do deserto e a mudança de lado no meio da passada da
-cachoeira. Velocidade e combate foram preservados.
-Validação: [CORRECAO_CORREDOR_1.3.1.md](docs/CORRECAO_CORREDOR_1.3.1.md).
-
-## Validação vigente — 1.5.3
-
-Explosivos preservam o destino e a faixa mesmo sem o alvo original. Saves
-rejeitam projéteis com parâmetros inválidos; relógios rejeitam valores não
-finitos. A suíte inclui geração automática de cenários e medição de cobertura
-de linhas e ramos. Use `python -m pip install -r requirements-test-lock.txt`
-e `python tools/quality.py` no ambiente virtual de desenvolvimento.
-
-Pesquisa, decisões e reprodução: [PESQUISA-E-TESTES-1.5.3.md](docs/PESQUISA-E-TESTES-1.5.3.md).
+Os relatórios antigos são referências históricas, não evidência de aprovação
+da cópia atual. Os resultados novos ficam em `reports/quality/latest.json`.

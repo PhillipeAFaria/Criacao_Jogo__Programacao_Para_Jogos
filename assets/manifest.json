@@ -284,20 +284,20 @@
     "bytes": 2426027
   },
   "assets/interface/beach_beta4_integrated_v6.png": {
-    "sha256": "9df19b2983c66acdc99929be9499bb8af549efb4a3546b041ac9b4e3f1118200",
-    "bytes": 2553430
+    "sha256": "af463162f94a07934649d0fd99674cfc4099bb03674bbf25125fa6cd03786d1b",
+    "bytes": 3593541
   },
   "assets/interface/city_beta4_integrated_v4.png": {
-    "sha256": "5b256f6452b9e0933571931e20ba1d160c613d22c3161a6704c019bfb2f05009",
-    "bytes": 1750731
+    "sha256": "40e224083195b7f50bf1e578ca18def9151ae816ac6449507177a2692476ceb2",
+    "bytes": 2878702
   },
   "assets/interface/combat_effects_sheet_beta4.png": {
     "sha256": "994fe83dc19d4b1c84f0689c38309131dc4c6770825622a4f2b986f6a7ee08d9",
     "bytes": 1167204
   },
   "assets/interface/desert_beta4_integrated_v4.png": {
-    "sha256": "a45da055cb8fbcb2bc60db3df181644fda8f41949af5b7ddd04f181fcc98462d",
-    "bytes": 1937434
+    "sha256": "c6fa92513b4cedf862e5ddfa9ee58906b2ef6bc4bb2d82fe20936e44ad90940b",
+    "bytes": 3145783
   },
   "assets/interface/elemental_effects_sheet_beta4_v2.png": {
     "sha256": "b5f4837019a62b90b05b5dadfd3886f358f82bfe6c55f733229b205aa1413287",
@@ -434,5 +434,153 @@
   "assets/frames/vfx/respingo_agua/frame_07.png": {
     "sha256": "2769adec6cb78e365fc706bb4fa32c615831caf2099b572344cc61a62fcadd5e",
     "bytes": 8786
+  },
+  "assets/actors/city_police_infected_4x4_v1.png": {
+    "sha256": "7aae4427c32cadfc57e7bc71d34cef58cb9aef092e8b50ee61f977620640319e",
+    "bytes": 1474043
+  },
+  "assets/actors/city_scientist_4x4_v1.png": {
+    "sha256": "83a87ca93b57b05b5e746ff937509efde56a320d1e84afd16977dbd57c234c4b",
+    "bytes": 1484064
+  },
+  "assets/actors/city_technician_4x4_v1.png": {
+    "sha256": "3a740b5e40f89c152c7f6123b96df9b9b5d6f36e204c723307423cf12ca37186",
+    "bytes": 1484364
+  },
+  "assets/actors/city_demolisher_4x4_v1.png": {
+    "sha256": "95b04dba604b812681d8a3aa8ef35fd3f69c1707333c46292f4d117420fd24af",
+    "bytes": 1441632
+  },
+  "assets/actors/city_quarantine_brute_4x4_v1.png": {
+    "sha256": "c5b55fe12125f42a22d4b1e782b6e237c1823d39fc0574d5839afa01fa682f25",
+    "bytes": 2393886
+  },
+  "assets/actors/city_mutant_commander_4x4_v1.png": {
+    "sha256": "28b7a5a6f579f04764963ef53e80642fffb7cf822115a9d4152c04c6f6bbeed3",
+    "bytes": 1615904
+  },
+  "assets/actors/city_boss_director_4x4_v1.png": {
+    "sha256": "4fe18df0f6bbbbeb51ccbb96c834d235a7b0bae6e7a1588e9ad604b317d65d22",
+    "bytes": 2184325
+  },
+  "assets/actors/city_boss_director_4x2_v2.png": {
+    "sha256": "c5807fff0209c1794b786c8189424d9e7bd0b6c3daffc5cdf6f9b28926251fda",
+    "bytes": 1472959
+  },
+  "assets/actors/city_boss_commander_4x4_v1.png": {
+    "sha256": "0c4ba28650a62495fc6e412cdca3f746ec023e148577d0c035a0c0d6a4625807",
+    "bytes": 1555202
+  },
+  "assets/actors/city_boss_alpha_4x4_v1.png": {
+    "sha256": "2430490c75ef11052ac452a883b8bc862d1a17db6acc65013c157c03212b8753",
+    "bytes": 2086469
+  },
+  "assets/actors/desert_khepra_4x2_v2.png": {
+    "sha256": "ca77f111d2f369537d7973be894cc3fc76526c7faf038cd7ddb82f929be80a72",
+    "bytes": 1385618
+  },
+  "assets/actors/desert_khepra_walk_4x2_v3.png": {
+    "sha256": "81bab1a7176164d6cb56126e73f0e25249464e8021616ffd68000e5fb7709646",
+    "bytes": 1289148
+  },
+  "assets/actors/desert_archer_4x4_v2.png": {
+    "sha256": "61f8a18ea30e99e91991dbaf35992728453d84592d909e062b2e3c37ccda356b",
+    "bytes": 1716274
+  },
+  "assets/actors/desert_beetle_host_4x4_v2.png": {
+    "sha256": "c7a51bc1b76b3e32d55d5557c344777c5e9d3e6599b5b6dc999d6d498b597cd0",
+    "bytes": 1337006
+  },
+  "assets/actors/desert_looter_4x4_v2.png": {
+    "sha256": "fe24ab50c68f605156607d37a1c9233f5607a073d72c27379405d4d9c215cf67",
+    "bytes": 1681632
+  },
+  "assets/actors/desert_blade_zombie_4x4_v2.png": {
+    "sha256": "33d3458ee57022ed02a64e668cd6786820f32652372c2f40be545decfb5d519c",
+    "bytes": 1591403
+  },
+  "assets/actors/desert_priest_4x4_v2.png": {
+    "sha256": "37d939720ed8a9c7538c371de1fb3b0654c33ac5dfc20d3fe3677e2e52fe6d0d",
+    "bytes": 1569090
+  },
+  "assets/interface/elemental_effects_sheet_beta4_v3.png": {
+    "sha256": "fae5c59d1cc83144f057fc0a7efb15660ebeacc7705967c3dbb46de06ec7f4e2",
+    "bytes": 1413196
+  },
+  "assets/interface/loading_fabrica_dos_mortos.jpeg": {
+    "bytes": 190572,
+    "sha256": "0f11a6639cefca3a6fa7633c25c65ed6ff2c47cf306673d15ca306f26b72b23d"
+  },
+  "assets/actors/desert_executor_4x4_v1.png": {
+    "bytes": 1610772,
+    "sha256": "f7b131da9eb0f40e855cf9100179362359dd7bc07e4213062a1bc93b5f2159da"
+  },
+  "assets/actors/desert_anubis_4x4_v1.png": {
+    "bytes": 1862566,
+    "sha256": "0b58128742dfd337f0c2f2578490305dd9372496f6c8d5bb8461c80c968fc6e6"
+  },
+  "assets/actors/desert_necropolis_commander_4x4_v1.png": {
+    "bytes": 1915467,
+    "sha256": "7d91af2661e81542d439417f253f9a734be40c593aa856754bc4e9cf7308b019"
+  },
+  "assets/actors/desert_colossus_4x4_v1.png": {
+    "sha256": "0f20df5bb120d0e57f9312f758d8ad510a473a3cdfa738a2c4c38a5a5fda5f09",
+    "bytes": 2471993
+  },
+  "assets/interface/colossus_boulder_v1.png": {
+    "sha256": "aa18a43f67a2605247dcd6f8479805947d75484c952956dcd5d2e093da179ad4",
+    "bytes": 1726489
+  },
+  "assets/actors/beach_surfer_4x4_v1.png": {
+    "sha256": "e1ffb18d628bd7fa2d148a3ab041f755012b7a6fe5c3b7056305c12389ba38cb",
+    "bytes": 1479233
+  },
+  "assets/actors/beach_surfer_surfing_4x4_v2.png": {
+    "sha256": "63fa7adbfc4d9578cc9abbcd37de401133a0e5f057c617c477990747d6bfd21a",
+    "bytes": 2023486
+  },
+  "assets/actors/beach_diver_4x4_v1.png": {
+    "sha256": "6033c4024b24a418f07975786927c3e12f4074791dc75fe1b7ccf5f2b66cab50",
+    "bytes": 2111717
+  },
+  "assets/actors/beach_fisher_4x4_v1.png": {
+    "sha256": "694810487554081bcd467da2a29f609823ae2cb8aacef7c60be1890184e4a077",
+    "bytes": 1722900
+  },
+  "assets/interface/fishing_net_2x1_v1.png": {
+    "sha256": "c512cb2b73dc7418ab3916a15e2d21a83cb00863624e1ce442746f715560b0b2",
+    "bytes": 1670210
+  },
+  "assets/actors/beach_puffer_4x4_v1.png": {
+    "sha256": "b7db00acd48af2b4aa7ea7bd1bda92c42e5eaa7a97dbdfe8da14faa1b8aba38d",
+    "bytes": 1645950
+  },
+  "assets/actors/beach_lifeguard_4x4_v1.png": {
+    "sha256": "17de95ec8c15f4f3e070a42613baab6af54fe673455b938bc2830392d5b7d76b",
+    "bytes": 1682518
+  },
+  "assets/actors/beach_deep_hunter_4x4_v1.png": {
+    "sha256": "9a44c20b145cba5e930ded719e3e31604458ccc2f0bff6337632d86fe0b94061",
+    "bytes": 1977602
+  },
+  "assets/actors/beach_deep_hunter_throw_4x4_v2.png": {
+    "sha256": "0e54e3ef676c92297e94cd80f9ab1445b7aadb5d36d9d3dee31210e56fd26331",
+    "bytes": 1777990
+  },
+  "assets/interface/hunter_harpoon_v1.png": {
+    "sha256": "01f438960c7f05c7b2ba84dcfd4c208eb8844c07159e7879a1f0eb518427d72e",
+    "bytes": 649246
+  },
+  "assets/actors/beach_brute_4x4_v1.png": {
+    "sha256": "b3bbd44260e119a36b5b950bfec440b17c887e2632c9573414f541703539f63f",
+    "bytes": 2601492
+  },
+  "assets/actors/beach_abyssal_hunter_4x4_v1.png": {
+    "sha256": "4021f85d4056c0d07e24aed2b2e83ed8822e64042b2db5dbad71321f73928542",
+    "bytes": 2096516
+  },
+  "assets/actors/beach_green_colossus_4x4_v1.png": {
+    "sha256": "7d265048ae9fd9a157cf0b0f1c51e8315789d763104435dfd60b565bae428744",
+    "bytes": 3167467
   }
 }

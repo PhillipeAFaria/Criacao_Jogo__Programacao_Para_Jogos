@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .content import CRAWLER_ENEMIES
+
 
 @dataclass(frozen=True)
 class ActorLayout:
@@ -110,6 +112,31 @@ ENEMY_BODY_LAYOUTS: dict[str, tuple[float, float]] = {
     "subboss": (109.0, 132.0),
     "boss": (116.0, 140.0),
 }
+
+# Os sprites desses atores usam folhas com o dobro da resolução base.
+HIGH_RES_ENEMY_SPRITES = frozenset({
+    "policial_helix", "cientista_helix", "tecnico_subestacao", "bruto", "divisor",
+    "policial", "bruto_demolidor", "comandante_mortos", "cuspidor_alfa",
+    "desperto_khepra", "arqueiro_necropole", "hospedeiro_escaravelhos",
+    "saqueador_canopico", "parasita", "curandeiro", "mutante",
+    "mutante_ruinas", "necromante", "necromante_minion", "colosso_mutante", "surfista", "mergulhador", "pescador_praga", "baiacu_mutante", "salva_vidas", "cacador", "tide_brute", "cacador_abissal", "leviata",
+})
+
+
+def enemy_body_layout(enemy) -> tuple[float, float]:
+    if enemy.key in CRAWLER_ENEMIES:
+        category = "crawler"
+    elif enemy.is_boss:
+        category = "boss"
+    elif enemy.data.get("subboss"):
+        category = "subboss"
+    else:
+        category = "common"
+    body_height, source_height = ENEMY_BODY_LAYOUTS[category]
+    if enemy.key in HIGH_RES_ENEMY_SPRITES:
+        source_height *= 2
+    return body_height, source_height
+
 
 # Ponto de nascimento medido a partir do centro no chão. Valores horizontais
 # negativos apontam para a esquerda, direção única dos infectados.
@@ -233,10 +260,8 @@ ENEMY_ACTIVE_INTERACTIONS: dict[str, str] = {
     "net": "lançamento_de_rede",
     "scream": "grito_de_comando",
     "heal": "cura_da_escolta",
-    "parasite": "surto_parasita",
     "stomp": "impacto_no_solo",
     "steal": "roubo_de_suprimentos",
-    "signal_jammer": "interferência_de_sinal",
 }
 
 ENEMY_PASSIVE_TRAITS = frozenset(

@@ -64,7 +64,7 @@ class CarrosselECountersTests(unittest.TestCase):
         battle.take_enemy_damage(bruto, 100, "mortar", rocket)
         self.assertLess(bruto.hp, initial)
 
-    def test_zumbi_de_lamina_exige_guardiao(self) -> None:
+    def test_zumbi_de_lamina_resiste_a_balas_sem_exigir_guardiao(self) -> None:
         battle = Battle(self.game, "desert", [("guardiao_laminas", "Guardião")])
         blade = Enemy("parasita", 1, ENEMIES["parasita"], "desert", 7)
         rifle = Defender("fuzileiro_deserto", "Fuzileiro", 1, 2, DEFENSES["fuzileiro_deserto"], 0, region="desert")
@@ -72,10 +72,10 @@ class CarrosselECountersTests(unittest.TestCase):
         battle.enemies.append(blade)
         initial = blade.hp
         battle.take_enemy_damage(blade, 200, source=rifle)
-        self.assertEqual(initial, blade.hp)
+        self.assertAlmostEqual(initial - 40, blade.hp)
         battle.take_enemy_damage(blade, 10, source=guard)
-        self.assertGreater(blade.defense_broken, 0)
-        self.assertLess(blade.hp, initial)
+        self.assertEqual(blade.defense_broken, 0)
+        self.assertAlmostEqual(initial - 50, blade.hp)
 
     def test_mergulhador_e_rompido_por_precisao_naval(self) -> None:
         battle = Battle(self.game, "beach", [("atirador_precisao_marinha", "Precisão")])

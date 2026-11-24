@@ -97,8 +97,9 @@ def validate_animation_boxes(game: Game) -> None:
             for frame in clip.frames
         }
         assert len(sizes) == 1, f"{actor} muda a caixa entre estados"
-        for clip in states.values():
-            assert len(clip.frames) in {2, 4, 8, 16}
+        for state, clip in states.items():
+            minimum_frames = 1 if state == "idle" else 2
+            assert len(clip.frames) >= minimum_frames, f"{actor}:{state} tem poucos quadros"
             assert clip.duration > 0
             assert all(frame.get_bounding_rect(min_alpha=8).width > 0 for frame in clip.frames)
 

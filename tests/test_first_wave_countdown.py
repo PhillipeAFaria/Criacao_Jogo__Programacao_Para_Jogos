@@ -58,7 +58,7 @@ class FirstWaveCountdownTests(unittest.TestCase):
         b.update_wave(.02);self.assertEqual(len(b.enemies),1)
     def test_old_save_does_not_restart_already_running_wave(self):
         b=self.battle();b.start_next_wave();b.first_wave_countdown=0
-        data=capture(b);del data['battle']['first_wave_countdown']
+        data=capture(b);data['schema']=1;del data['battle']['first_wave_countdown']
         resumed,_=restore(data,self.game)
         self.assertEqual(resumed.first_wave_countdown,0)
     def test_invalid_countdown_is_rejected(self):

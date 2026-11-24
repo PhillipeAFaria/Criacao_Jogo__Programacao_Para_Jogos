@@ -13,10 +13,11 @@ from .content import (REGIONS, DIFFICULTIES, DEFENSES, ENEMIES, BOSSES,
 from .entities import Defender, Enemy, Projectile, Particle, FloatingText, SpawnOrder, LaneBomb
 from .motion import ActorMotion, VisualEffect
 
-SCHEMA = 2
+SCHEMA = 4
+SUPPORTED_SCHEMAS = (1, 2, 3, SCHEMA)
 CLASSES = {c.__name__: c for c in (Defender, Enemy, Projectile, Particle, FloatingText,
                                  SpawnOrder, LaneBomb, ActorMotion, VisualEffect)}
-EXCLUDED = {'app', 'wave_director', 'difficulty_data', 'water_rows', 'fallen'}
+EXCLUDED = {'app', 'wave_director', 'difficulty_data', 'water_rows', 'fallen', 'player_name'}
 ENTITY_EXCLUDED = {'visual_animation', 'stats', 'data'}
 ANIMATION_FIELDS = ('state', 'frame_index', 'frame_elapsed', 'finished', 'paused',
                     'playback_rate', 'loop_count')
@@ -26,6 +27,31 @@ COLLECTIONS = {'defenders': Defender, 'enemies': Enemy, 'projectiles': Projectil
                'particles': Particle, 'texts': FloatingText, 'effects': VisualEffect,
                'orders': SpawnOrder, 'lane_bombs': LaneBomb}
 MAX_OBJECTS = 12000
+# Vida base do último balanceamento nos saves que ainda não registravam esse valor.
+PREVIOUS_BASE_HP = {
+    'infectado_urbano': 124, 'desperto_khepra': 130, 'afogado_cachoeira': 126,
+    'corredor_cidade': 170, 'corredor_deserto': 180, 'corredor_cachoeira': 175,
+}
+
+
+# Campos adicionados depois do schema 3. Mantém os valores já gravados
+# pela versão intermediária que ainda escrevia snapshots com schema 3.
+SCHEMA4_FIELDS = {
+    Defender: ('idle_reload_delay',),
+    Enemy: (
+        'director_windup', 'director_entrance', 'gun_windup', 'heal_windup',
+        'blade_windup', 'steal_windup', 'acid_windup', 'slam_windup',
+        'anubis_entrance', 'command_windup', 'command_entrance',
+        'necropolis_shot_timer', 'necropolis_heal_timer',
+        'tide_windup', 'tide_entrance', 'tide_target', 'abyss_windup', 'abyss_target', 'jet_windup', 'jet_target',
+        'harpoon_phase', 'harpoon_timer', 'harpoon_target', 'harpoon_x', 'harpoon_y',
+        'net_windup', 'diver_surfaced', 'dash_active', 'dash_windup', 'rock_windup',
+    ),
+}
+SCHEMA4_DEFAULTS = {
+    cls: {field.name: field.default for field in fields(cls) if field.name in names}
+    for cls, names in SCHEMA4_FIELDS.items()
+}
 
 
 def require(condition, message='Partida salva inválida.'):
@@ -63,6 +89,8 @@ def capture(battle):
             identifiers[marker] = index
             node = {'type': type(value).__name__, 'fields': {}}
             nodes.append(node)
+            if isinstance(value, Enemy):
+                node["base_hp"] = value.data["hp"]
             node['fields'] = {f.name: encode(getattr(value, f.name)) for f in fields(value)
                               if f.name not in ENTITY_EXCLUDED}
             if isinstance(value, (Defender, Enemy)):
@@ -87,12 +115,13 @@ def capture(battle):
             'random': encode(random.getstate()),
             'scenario': {k: getattr(battle.app.scenario_runtime, k) for k in SCENARIO_FIELDS},
             'scene_elapsed': battle.app.scene_elapsed,
-            'integration_preview': battle.app.integration_preview}
+            'integration_preview': battle.app.integration_preview,
+            'player_name': getattr(battle, 'player_name', getattr(battle.app, 'player_name', 'Jogador'))}
 
 
 def restore(snapshot, app):
     """Constrói fora da partida ativa e valida tudo antes de alterar a aplicação."""
-    require(type(snapshot) is dict and type(snapshot.get('schema')) is int and snapshot['schema'] in (1, SCHEMA),
+    require(type(snapshot) is dict and type(snapshot.get('schema')) is int and snapshot['schema'] in SUPPORTED_SCHEMAS,
             'Formato de partida incompatível com esta versão.')
     state = snapshot.get('battle')
     records = snapshot.get('objects')
@@ -129,6 +158,12 @@ def restore(snapshot, app):
     for obj, record in zip(objects, records):
         attributes = record.get('fields')
         expected = {f.name for f in fields(obj)} - ENTITY_EXCLUDED
+        if (snapshot['schema'] < 3 and isinstance(obj, Defender)
+                and type(attributes) is dict and 'tactical_ammo_timer' not in attributes):
+            # Saves da Alfa anterior não continham o consumível novo.
+            attributes = {**attributes, 'tactical_ammo_timer': 0.0}
+        if type(attributes) is dict and type(obj) in SCHEMA4_DEFAULTS:
+            attributes = {**SCHEMA4_DEFAULTS[type(obj)], **attributes}
         require(type(attributes) is dict and set(attributes) == expected)
         hints = get_type_hints(type(obj))
         for name, raw in attributes.items():
@@ -146,11 +181,22 @@ def restore(snapshot, app):
             require(obj.region == state['region'] and obj.difficulty == state['difficulty'])
             require(0 <= obj.wave <= TOTAL_WAVES)
             obj.data = BOSSES.get(obj.key) or ENEMIES[obj.key]
+            base_hp = obj.data["hp"]
+            previous = PREVIOUS_BASE_HP.get(obj.key, base_hp)
+            if snapshot['schema'] < 3 and obj.key.startswith('corredor_'):
+                previous *= 2
+            saved_base = record.get('base_hp', previous if snapshot['schema'] < SCHEMA else None)
+            require(typed(saved_base, float) and saved_base > 0)
+            if base_hp != saved_base:
+                obj.hp *= base_hp / saved_base
             if snapshot['schema'] == 1:
-                # Conserva a fração de vida dos inimigos de saves com escalada.
+                # Só o schema 1 usava vida escalada por onda. Conserva a
+                # porcentagem restante; o schema 2 já tem atributos fixos.
                 progress = min(1.0, max(0.0, (obj.wave - 1) / max(1, TOTAL_WAVES - 1)))
                 old_scale = (0.78 + 1.25 * progress ** 1.40) if obj.is_boss else (0.66 + 1.50 * progress ** 1.55)
                 obj.hp = min(obj.max_hp, obj.hp / old_scale)
+            elif base_hp != saved_base:
+                obj.hp = min(obj.hp, obj.max_hp)
         if isinstance(obj, SpawnOrder):
             require(obj.key in ENEMIES or obj.key in BOSSES)
             require(not obj.boss or obj.key in BOSSES)
@@ -173,15 +219,20 @@ def restore(snapshot, app):
     battle = Battle(app, state['region'], selected)
     # Saves anteriores à pontuação começam em zero, sem inventar abates.
     state = dict(state)
-    state.setdefault('first_wave_countdown', 0.0)
+    if snapshot['schema'] < 3:
+        # Saves anteriores não reiniciam uma contagem já concluída.
+        state.setdefault('first_wave_countdown', 0.0)
     if 'score' not in state and 'match_id' not in state:
         import hashlib, json
         state['score'] = 0
         state['match_id'] = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()[:32]
     expected = set(vars(battle)) - EXCLUDED
     require(set(state) == expected, 'Campos da partida incompatíveis.')
+    player_name = snapshot.get('player_name', getattr(app, 'player_name', '') or 'Jogador')
+    require(type(player_name) is str and 1 <= len(player_name.strip()) <= 20 and player_name.strip().isprintable(),
+            'Nome do jogador inválido no salvamento.')
+    battle.player_name = player_name.strip()
     for name, raw in state.items():
-        # A reserva é um inteiro sem teto; os outros campos mantêm seus limites.
         value = raw if name == 'supplies' else decode(raw)
         default = getattr(battle, name)
         if name in COLLECTIONS:

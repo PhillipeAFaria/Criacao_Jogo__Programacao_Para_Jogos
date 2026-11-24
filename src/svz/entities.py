@@ -47,6 +47,7 @@ class Defender:
     utility_timer: float = 0.0
     reload_timer: float = 0.0
     reload_total: float = 0.0
+    tactical_ammo_timer: float = 0.0
     stun: float = 0.0
     corrosion: float = 0.0
     ascended: float = 0.0
@@ -59,6 +60,7 @@ class Defender:
     deployment_x: float | None = None
     deployment_target_x: float | None = None
     deployment_speed: float = 260.0
+    idle_reload_delay: float = 0.0
 
     def __post_init__(self) -> None:
         self.hp = float(self.stats["hp"])
@@ -117,6 +119,36 @@ class Enemy:
     attack_target: Defender | None = None
     attack_damage: float = 0.0
     first_attack_done: bool = False
+    director_windup: float = 0.0
+    director_entrance: bool = False
+    gun_windup: float = 0.0
+    heal_windup: float = 0.0
+    blade_windup: float = 0.0
+    steal_windup: float = 0.0
+    acid_windup: float = 0.0
+    slam_windup: float = 0.0
+    anubis_entrance: bool = False
+    net_windup: float = 0.0
+    diver_surfaced: bool = False
+    dash_active: float = 0.0
+    dash_windup: float = 0.0
+    harpoon_phase: str = ""
+    harpoon_timer: float = 0.0
+    harpoon_target: Defender | None = None
+    harpoon_x: float = 0.0
+    harpoon_y: float = 0.0
+    jet_windup: float = 0.0
+    jet_target: Defender | None = None
+    abyss_windup: float = 0.0
+    abyss_target: Defender | None = None
+    tide_windup: float = 0.0
+    tide_entrance: bool = False
+    tide_target: Defender | None = None
+    rock_windup: float = 0.0
+    command_windup: float = 0.0
+    command_entrance: bool = False
+    necropolis_shot_timer: float = 0.0
+    necropolis_heal_timer: float = 5.0
     skill_timer: float = 1.8
     age: float = 0.0
     stun: float = 0.0
@@ -166,8 +198,32 @@ class Enemy:
         return float(self.data["hp"]) * scale
 
     @property
+    def bite_duration(self) -> float:
+        if self.visual_animation is None:
+            return 0.44 if self.is_boss else 0.34
+        return self.visual_animation.animations["bite"].duration
+
+    @property
+    def bite_contact_time(self) -> float:
+        if self.key in {"divisor", "policial", "bruto_demolidor", "comandante_mortos", "cuspidor_alfa", "desperto_khepra", "arqueiro_necropole", "hospedeiro_escaravelhos", "saqueador_canopico", "parasita", "curandeiro", "mutante", "mutante_ruinas", "necromante", "colosso_mutante", "surfista", "mergulhador", "pescador_praga", "baiacu_mutante", "salva_vidas", "baiacu_mutante", "salva_vidas", "cacador", "tide_brute", "cacador_abissal", "leviata"} and self.visual_animation is not None:
+            clip = self.visual_animation.animations["bite"]
+            contact = sum(clip.frame_durations[:len(clip.frames)//2])
+            return contact * self.bite_cycle / max(.001, clip.duration)
+        return min(0.46 if self.is_boss else 0.38, self.bite_duration * 0.42)
+
+    @property
+    def bite_cycle(self) -> float:
+        return min(self.bite_duration, float(self.data["attack"]))
+
+    @property
     def is_boss(self) -> bool:
         return self.key in BOSSES
+
+    @property
+    def submerged(self) -> bool:
+        from .config import BEACH_WATER_ROWS
+        return (self.key == "mergulhador" and self.region == "beach"
+                and self.row in BEACH_WATER_ROWS and not self.diver_surfaced)
 
     @property
     def tags(self) -> tuple:

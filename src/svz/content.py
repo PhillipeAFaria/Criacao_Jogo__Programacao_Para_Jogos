@@ -25,8 +25,6 @@ REGIONS = {
         "accent": (90, 207, 166),
         "unlock_after": None,
         "description": "Uma avenida de quarentena com quatro pistas largas de asfalto, base de emergência e ruínas tóxicas nas bordas.",
-        # Chefes voltam quando suas novas folhas forem aprovadas.
-        "bosses": (),
     },
     "desert": {
         "name": "Egito — Escavação Félix",
@@ -39,7 +37,6 @@ REGIONS = {
         "accent": (235, 179, 76),
         "unlock_after": "city",
         "description": "Quatro trilhas largas de areia compactada cruzam uma expedição militar rumo às ruínas e pirâmides antigas.",
-        "bosses": (),
     },
     "beach": {
         "name": "Minas Gerais — Cachoeira Contaminada",
@@ -52,13 +49,13 @@ REGIONS = {
         "accent": (78, 177, 232),
         "unlock_after": "desert",
         "description": "Duas trilhas terrestres e dois canais contaminados defendem a base diante da cachoeira de Minas Gerais.",
-        "bosses": (),
     },
 }
 
 
-# Catálogo legado preservado somente como dados internos. A produção ativa
-# abaixo expõe um único protótipo novo por mapa, sem níveis ou promoções.
+# Fichas de catálogo e compatibilidade herdadas. Elas preservam chaves usadas
+# pela lógica comum; o elenco jogável é definido por REGION_ROSTERS, e as
+# fichas regionais adicionais são integradas a partir de EXPANSION_DEFENDERS.
 DEFENSES = {
     "xerife_rua": {
         "base": "Xerife de Rua",
@@ -556,9 +553,9 @@ DEFENSES = {
 }
 
 
-# Os quatro novos soldados de cada região agora fazem parte da Beta 4 ativa.
-# O registro de produção continua sendo a fonte de balanceamento, mas o jogo
-# completa aqui os campos comuns usados por seleção, combate e dossiê.
+# As fichas adicionais de EXPANSION_DEFENDERS integram o catálogo utilizado
+# pelo jogo. O registro de produção fornece atributos; este merge completa
+# os campos comuns usados por seleção, combate e consulta.
 _EXPANSION_COMBAT_CLASS = {
     "sniper": 2,
     "shotgun": 2,
@@ -627,7 +624,8 @@ def weapon_reload_seconds(stats: dict, ascended: bool = False) -> float:
     return float(clamp(seconds, 8.0, 15.0))
 
 
-# O sistema de evolução foi desligado integralmente nesta reconstrução.
+# API de compatibilidade: promoção por Instrutor está desativada na 1.5.0.
+# Mantemos este símbolo vazio para consumidores e testes que ainda o importam.
 PROMOTIONS: dict[str, str] = {}
 
 
@@ -737,7 +735,7 @@ REGION_ROSTERS = {
 # a seleção não promete uma função que o combate desconhece.
 CARD_DETAILS = {
     "xerife_rua": {
-        "lore": "Primeiro policial a isolar o Terminal Félix-13, manteve as ruas abertas com uma arma curta e decisões rápidas.",
+        "lore": "Primeiro policial a isolar o Terminal Félix, manteve as ruas abertas com uma arma curta e decisões rápidas.",
         "function": "Patrulha econômica de dois blocos, tiro forte e recarga curta.",
         "need": "É a resposta barata para segurar as primeiras linhas sem consumir a economia das cartas pesadas.",
     },
@@ -814,7 +812,7 @@ CARD_DETAILS = {
     "guardiao_laminas": {
         "lore": "Duelista da guarda de Khepra que estudou o ritmo das lâminas reanimadas dentro da pirâmide.",
         "function": "Aparo corpo a corpo e desarme de inimigos laminados.",
-        "need": "Única unidade que rompe a guarda do Zumbi de Lâmina; sem ela o alvo rejeita tiro e explosão.",
+        "need": "Combate ameaças resistentes a balas com ataques corpo a corpo.",
     },
     "marinheiro": {
         "lore": "Marinheiro da base mineira que organizou a primeira defesa terrestre após a água mudar de cor.",
@@ -854,7 +852,7 @@ CARD_DETAILS = {
     "operador_sonar": {
         "lore": "Hidrografista naval que adaptou um sonar portátil para localizar mutações abaixo da superfície.",
         "function": "Revelação do canal e ruptura de camuflagem submersa.",
-        "need": "Única unidade que expõe a blindagem do Mergulhador antes que tiros e torpedos possam feri-lo.",
+        "need": "Apoio de sonar contra ameaças aquáticas; o Mergulhador submerso exige torpedos explosivos.",
     },
     "barco_patrulha": {
         "lore": "Lancha leve enviada por um canal de manutenção até a zona isolada da cachoeira.",
@@ -887,8 +885,8 @@ CITY_TACTICAL_UNITS = {
     "operador_radio_policial": ("Comando e Logística", 1, "Gera suprimentos durante a onda sem exigir outra carta.", "Não ataca e precisa ser protegido."),
     "atirador_precisao_swat": ("SWAT de Observação", 1, "Prioriza alvos de maior vida.", "Cadência baixa e fraco contra enxames."),
     "agente_entrada": ("Tropa de Choque", 1, "Leque devastador à queima-roupa.", "Só cobre a casa imediatamente à frente."),
-    "especialista_antipraga": ("Unidade Antipraga", 2, "A nuvem química corrói blindagem biológica e contamina grupos.", "Ocupa duas casas, usa tambor de seis granadas e recarrega lentamente."),
-    "lancador_foguetes": ("Resposta Pesada", 2, "Explosão quebra grupos e blindados.", "Ocupa duas casas, um disparo e recarga longa."),
+    "especialista_antipraga": ("Unidade Antipraga", 1, "A nuvem química corrói blindagem biológica e contamina grupos.", "Usa tambor de seis granadas e recarrega lentamente."),
+    "lancador_foguetes": ("Resposta Pesada", 1, "Explosão quebra grupos e blindados.", "Um disparo por recarga, com intervalo longo."),
     "escudeiro_tropa_choque": ("Tropa de Choque", 1, "Interrompe a primeira investida recebida.", "Corpo a corpo e sem resposta a atacantes distantes."),
 }
 for _key, (_unit, _space, _advantage, _disadvantage) in CITY_TACTICAL_UNITS.items():
@@ -972,7 +970,7 @@ def regional_sprite_index(region: str, key: str) -> int:
 ENEMIES = {
     "infectado_urbano": {
         "name": "Infectado Urbano",
-        "hp": 124,
+        "hp": 186,
         "speed": 11,
         "damage": 17,
         "attack": 1.2,
@@ -981,7 +979,7 @@ ENEMIES = {
     },
     "desperto_khepra": {
         "name": "Desperto de Khepra",
-        "hp": 130,
+        "hp": 195,
         "speed": 10.5,
         "damage": 17,
         "attack": 1.18,
@@ -990,7 +988,7 @@ ENEMIES = {
     },
     "afogado_cachoeira": {
         "name": "Afogado da Cachoeira",
-        "hp": 126,
+        "hp": 189,
         "speed": 11,
         "damage": 16,
         "attack": 1.16,
@@ -999,22 +997,22 @@ ENEMIES = {
     },
     "corredor_cidade": {
         "name": "Corredor do Metrô",
-        "hp": 340,
+        "hp": 85,
         "speed": 24,
-        "damage": 46,
+        "damage": 23,
         "attack": 0.78,
         "sprite": 1,
         "armor": 0.25,
         "first_attack_multiplier": 2.0,
         "contact_distance": 72,
-        "tags": ("runner", "unstaggerable", "constant_speed", "signal_jammer"),
+        "tags": ("runner", "unstaggerable", "constant_speed"),
         "ability": "Infectado urbano resistente. Corre em velocidade constante, ignora interrupções por tiro e causa dano dobrado somente na primeira mordida.",
     },
     "corredor_deserto": {
         "name": "Corredor da Necrópole",
-        "hp": 360,
+        "hp": 90,
         "speed": 22,
-        "damage": 54,
+        "damage": 27,
         "attack": 0.82,
         "sprite": 1,
         "armor": 0.26,
@@ -1025,9 +1023,9 @@ ENEMIES = {
     },
     "corredor_cachoeira": {
         "name": "Corredor da Trilha",
-        "hp": 350,
+        "hp": 87.5,
         "speed": 23,
-        "damage": 39,
+        "damage": 19.5,
         "attack": 0.80,
         "sprite": 1,
         "armor": 0.25,
@@ -1287,9 +1285,9 @@ ENEMIES = {
         "damage": 33,
         "attack": 0.92,
         "sprite": 3,
-        "ability": "Armadura de mergulho espessa; pode atingir embarcações com força.",
+        "ability": "Nada submerso, vulnerável apenas a torpedos explosivos. Emerge a uma casa da tropa e passa a receber tiros.",
         "armor": 0.30,
-        "tags": ("naval_hunter",),
+        "tags": (),
     },
     "cacador": {
         "name": "Caçador da Costa",
@@ -1422,23 +1420,24 @@ ENEMIES["mutante"].update({
 })
 ENEMIES["salva_vidas"].update({
     "name": "Salva-Vidas Colossal",
-    "ability": "Subchefe anfíbio: investida de resgate mutada derruba a cadência das tropas na própria faixa.",
+    "ability": "A cada 5 segundos, cura 5% da vida máxima de si e dos zumbis a até duas casas, somente na própria faixa.",
 })
 ENEMIES["cacador"].update({
     "name": "Caçador das Profundidades",
-    "ability": "Subchefe de mergulho blindado que avança com arpão; sonar e precisão naval expõem suas placas.",
+    "tags": (),
+    "ability": "Lança um arpão a até duas casas na própria faixa. Ao atingir um soldado, prende o arpão e avança rapidamente até ele.",
 })
 
 
 BOSSES = {
     "bruto_demolidor": {
         "name": "BRUTO DEMOLIDOR",
-        "hp": 1000,
-        "speed": 6,
+        "hp": 1250,
+        "speed": 7.5,
         "damage": 30,
         "attack": 1.05,
         "sprite": 10,
-        "ability": "Entrada: paralisa militares por 3 s. Depois, o Martelo fecha só a própria faixa por 1,2 s a cada 18 s.",
+        "ability": "Entrada: paralisa militares por 3 s. Depois, utiliza apenas o ataque básico.",
         "type": "bruto_demolidor",
     },
     "comandante_mortos": {
@@ -1494,7 +1493,7 @@ BOSSES = {
     "tide_brute": {
         "name": "BRUTO DA MARÉ",
         "hp": 1050,
-        "speed": 6,
+        "speed": 6.6,
         "damage": 34,
         "attack": 1.0,
         "sprite": 9,
@@ -1575,10 +1574,11 @@ ENEMY_DEFENSE_TRAITS = {
         "defense_name": "guarda de demolição",
     },
     "parasita": {
-        "immunities": ("ballistic", "explosive"),
-        "counter_keys": ("guardiao_laminas",),
-        "counter_label": "Guardião de Lâminas",
-        "defense_name": "guarda de lâminas amaldiçoadas",
+        "resistances": {"ballistic": 0.80},
+        "immunities": (),
+        "counter_keys": (),
+        "counter_label": "Dano não balístico",
+        "defense_name": "resistência a balas (80%)",
     },
     "curandeiro": {
         "resistances": {"explosive": 0.78, "ballistic": 0.30},
@@ -1593,9 +1593,8 @@ ENEMY_DEFENSE_TRAITS = {
         "defense_name": "placas de ruína",
     },
     "mergulhador": {
-        "immunities": ("ballistic", "explosive"),
-        "counter_keys": ("atirador_precisao_marinha", "submarino_tatico"),
-        "counter_label": "Precisão naval ou Submarino Tático",
+        "counter_keys": (),
+        "counter_label": "Torpedo explosivo enquanto submerso",
         "defense_name": "camuflagem submersa",
     },
     "salva_vidas": {
@@ -1615,13 +1614,10 @@ ENEMY_DEFENSE_TRAITS = {
 for _enemy_key, _traits in ENEMY_DEFENSE_TRAITS.items():
     ENEMIES[_enemy_key].update(_traits)
 
-# O Zumbi de Lâmina é a leitura final do antigo Parasita: agora sua ficha e a
-# regra de combate comunicam a mesma ameaça e o mesmo counter obrigatório.
+# Defesa passiva: sem habilidade ativa nem imunidades.
 ENEMIES["parasita"]["name"] = "Zumbi de Lâmina"
-ENEMIES["parasita"]["ability"] = (
-    "As lâminas amaldiçoadas desviam balas e explosões. Somente o Guardião "
-    "de Lâminas consegue aparar o golpe e abrir sua defesa por alguns segundos."
-)
+ENEMIES["parasita"]["tags"] = ()
+ENEMIES["parasita"]["ability"] = "Recebe 80% menos dano de balas. Usa apenas o ataque básico e não possui habilidade ativa."
 
 for _boss_key, _boss_data in BOSSES.items():
     _boss_data.setdefault("resistances", {})["explosive"] = 0.68
@@ -1747,10 +1743,8 @@ ACTIVE_ENEMY_SKILL_TAGS = frozenset(
         "net",
         "scream",
         "heal",
-        "parasite",
         "stomp",
         "steal",
-        "signal_jammer",
     }
 )
 

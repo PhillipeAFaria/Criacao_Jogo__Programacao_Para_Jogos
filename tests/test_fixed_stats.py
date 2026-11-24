@@ -67,6 +67,10 @@ class FixedStatsTests(unittest.TestCase):
                     b.enemies=[enemy]
                     if boss:b.boss_skill(enemy)
                     else:b.enemy_special(enemy)
+                    windup = max(enemy.gun_windup, enemy.acid_windup)
+                    if windup:
+                        self.assertFalse(b.projectiles, key)
+                        b.update_enemies(windup)
                     samples.append([p.damage for p in b.projectiles])
                 self.assertTrue(samples[0],key)
                 self.assertEqual(samples[0],samples[1],key)
