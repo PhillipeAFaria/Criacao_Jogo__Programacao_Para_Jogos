@@ -1,0 +1,53 @@
+name: Validar contribuicao
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: validacao-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  estrutura:
+    name: Validar estrutura e pacote web
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Conferir sintaxe Python
+        run: python -m compileall -q src tools tests main.py web/build_site.py
+      - name: Conferir pacote publicado e hashes
+        run: python web/build_site.py
+  testes:
+    name: Testes Python Windows
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: src
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      SVZ_DATA_DIR: ${{ github.workspace }}/reports/ci-data
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements*-lock.txt
+      - name: Instalar dependencias de teste
+        run: python -m pip install -r requirements-test-lock.txt
+      - name: Executar testes existentes com dados isolados
+        run: python tools/test_suite.py --report reports/ci-tests.json
+      - name: Guardar resultado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-testes-windows
+          path: reports/ci-tests.json
+          if-no-files-found: warn

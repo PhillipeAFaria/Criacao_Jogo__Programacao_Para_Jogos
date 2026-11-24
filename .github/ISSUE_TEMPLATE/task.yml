@@ -1,0 +1,23 @@
+name: Tarefa da equipe
+description: Definir uma melhoria, correção ou entrega pequena
+title: "[Tarefa] "
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objetivo e escopo
+      description: Descreva uma entrega; se for grande, divida em tarefas menores.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Critérios para concluir
+      description: O que será verificado e por quem? Inclua testes pertinentes.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependências e responsáveis
+      description: Cite outras tarefas e combine o responsável com a equipe.
