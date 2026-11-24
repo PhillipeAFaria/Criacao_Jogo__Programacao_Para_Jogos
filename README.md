@@ -8,6 +8,23 @@ perfil local, ranking e loja de consumíveis.
 estrutura modular, perfis e loja com as melhorias de jogabilidade da 1.5.3.
 Construção local; nenhuma release foi publicada no GitHub.
 
+## Jogar no navegador
+
+**[Abrir Fábrica dos Mortos](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png) · [Atualizar publicação](web/README.md)
+
+A versão web está publicada no GitHub Pages. Chrome foi testado com emulação
+móvel; validação em celular físico ainda está pendente. Os saves web pertencem ao
+navegador e são separados da versão Windows.
+
+## Trabalho em equipe
+
+Este é o repositório atual de uma equipe de sete integrantes. Use uma Issue por
+tarefa, branch curta e Pull Request para `main`. Comece por:
+
+- [Como contribuir](CONTRIBUTING.md)
+- [Organização, revisão e responsabilidades](docs/ORGANIZACAO_EQUIPE.md)
+- [Histórico dos três repositórios](docs/HISTORICO_REPOSITORIOS.md)
+
 ## Jogar no Windows
 
 1. Instale Python **3.12 x64**, com o Python Launcher (`py`).
@@ -52,6 +69,8 @@ registradas em `jogo.log` na pasta nova.
 | `docs/` | Guias atuais e relatório da revisão |
 | `docs/historico/` | Relatórios e evidências de versões anteriores |
 | `licenses/` | Licenças das dependências |
+| `web/` | Pacote publicado, manifesto, QR Codes e instruções do Pages |
+| `.github/` | Modelos de tarefas/PR e verificações automáticas |
 | `reports/` | Saídas locais de validação e backup anterior à revisão |
 
 Não mova `assets/` nem altere sua estrutura sem atualizar as referências.
@@ -68,3 +87,4 @@ Ambientes `.venv/`, builds e relatórios são locais e ignorados pelo Git.
 
 Os relatórios antigos são referências históricas, não evidência de aprovação
 da cópia atual. Os resultados novos ficam em `reports/quality/latest.json`.
+

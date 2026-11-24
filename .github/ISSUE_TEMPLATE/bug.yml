@@ -1,0 +1,24 @@
+name: Problema no jogo
+description: Relatar erro com passos para reprodução
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: O que acontece e o que deveria acontecer?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir?
+      description: Informe mapa, unidade, ações e, se possível, imagem ou vídeo.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Plataforma e versão
+      placeholder: Windows ou navegador, celular real ou emulação, commit/versão
+    validations:
+      required: true
