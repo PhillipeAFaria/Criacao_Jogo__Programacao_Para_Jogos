@@ -35,6 +35,10 @@ Não foi criado CODEOWNERS com nomes ou responsabilidades presumidos.
   **1 aprovação**, descartando aprovações antigas após novos commits.
 - Revisão humana continua sendo o processo esperado; CI não avalia qualidade visual.
 
+Inicialmente, o check obrigatório é `Validar estrutura e pacote web`. A suíte
+Windows executa e mostra suas falhas, mas será obrigatória depois da correção
+das [pendências conhecidas](PENDENCIAS_TESTES.md).
+
 Não tornar um teste obrigatório antes de ele existir e passar no GitHub.
 Não usar a exigência de revisão como substituto para cadastrar os integrantes.
 
