@@ -1,0 +1,3 @@
+Endereco permanente: https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/
+QR estatico, sem assinatura ou encurtador. PNGs conferidos por decodificacao.
+Mantenha a margem branca e nao recorte o codigo.
