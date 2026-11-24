@@ -4,3 +4,6 @@
 *.toml text eol=lf
 assets/**/*.png binary
 assets/**/*.wav binary
+
+# Preserve exact bytes validated by the web manifest.
+web/site/** -text

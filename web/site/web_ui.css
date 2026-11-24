@@ -1,0 +1,22 @@
+:root{color-scheme:dark;font-family:Arial,sans-serif;background:#071318;color:#edf4ef}
+html,body{margin:0!important;background:#071318!important;overflow:hidden!important;overscroll-behavior:none;height:100%;touch-action:manipulation}
+canvas#canvas{position:fixed!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%);width:min(100vw,calc((100dvh - 124px)*16/9))!important;height:auto!important;aspect-ratio:16/9!important;max-height:calc(100dvh - 124px)!important;touch-action:none;outline:none}
+#pyconsole,#system,#transfer,#info,#box,#dlg{display:none!important}
+#infobox{position:fixed!important;z-index:8!important;top:45%!important;left:50%!important;transform:translate(-50%,-50%);max-width:80vw;background:#15373d!important;color:#fff!important;padding:16px;border-radius:12px}
+#web-ui header{position:fixed;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;padding:5px 12px;background:#0c2027;z-index:10;min-height:44px}
+#web-ui header strong{margin-right:auto;font-size:16px}
+#web-ui button{font:600 14px Arial;min-height:44px;padding:7px 12px;border:1px solid #3b646d;border-radius:8px;background:#18353e;color:#f1faf6;cursor:pointer;touch-action:manipulation}
+#web-ui button:disabled{opacity:.4;cursor:default}
+#web-ui button:focus-visible{outline:3px solid #4fd3c6}
+#web-ui nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:5px;padding:6px;background:#0c2027;z-index:10;flex-wrap:wrap}
+#loading-web{position:fixed;inset:56px 0 62px;background:#071318ed;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:7;padding:15px}
+#loading-web[hidden]{display:none} #load-progress{width:min(500px,80vw);height:20px;accent-color:#43bdb9}
+.hint{font-size:14px;color:#c3d4d8;max-width:500px}
+#web-error{position:fixed;top:58px;left:4%;right:4%;padding:12px;background:#692d21;color:white;z-index:15}
+#rotate{display:none} dialog{z-index:30;background:#102b32;border:1px solid #4fa6a5;border-radius:12px;padding:20px;color:white}
+dialog input{display:block;font-size:20px;margin:12px 0;min-height:44px;max-width:65vw}
+@media(max-width:900px){#web-ui button{padding:5px 8px;font-size:12px}#web-ui header strong{font-size:14px}#web-ui nav{gap:3px}#export{display:none}}
+@media(orientation:portrait) and (pointer:coarse){#rotate{display:flex;position:fixed;inset:0;align-items:center;justify-content:center;text-align:center;padding:32px;background:#071318;z-index:25;font-size:24px}}
+canvas#canvas{margin:0!important;right:auto!important;bottom:auto!important}
+dialog select{display:block;width:100%;min-height:44px;font-size:16px;margin:8px 0}dialog{max-height:75dvh;overflow:auto;max-width:540px} @media(max-width:900px){#web-ui nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto}#web-ui nav button{flex-shrink:0}#export{display:block}}
+#touch-cards{min-height:44px;max-width:200px;font-size:16px;border-radius:8px;background:#18353e;color:white}
