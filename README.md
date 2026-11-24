@@ -10,7 +10,7 @@ Construção local; nenhuma release foi publicada no GitHub.
 
 ## Jogar no navegador
 
-**[Abrir Fábrica dos Mortos](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Codes](web/QR_Code/) · [Atualizar publicação](web/README.md)
+**[Abrir Fábrica dos Mortos](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png) · [Atualizar publicação](web/README.md)
 
 A versão web está publicada no GitHub Pages. Chrome foi testado com emulação
 móvel; validação em celular físico ainda está pendente. Os saves web pertencem ao
@@ -87,3 +87,4 @@ Ambientes `.venv/`, builds e relatórios são locais e ignorados pelo Git.
 
 Os relatórios antigos são referências históricas, não evidência de aprovação
 da cópia atual. Os resultados novos ficam em `reports/quality/latest.json`.
+
