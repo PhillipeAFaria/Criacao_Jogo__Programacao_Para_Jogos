@@ -28,7 +28,49 @@
  function status(text,percent){$('load-label').textContent=text; if(percent>=0)$('load-progress').value=percent;}
  function fail(text){$('web-error').hidden=false;$('web-error').textContent=text;$('retry').hidden=false;}
  function send(action,extra={}){if(!busy||['hidden','visible'].includes(action))queue.push({action,...extra});}
- function fullscreen(){document.documentElement.requestFullscreen?.().then(()=>screen.orientation?.lock?.('landscape')).catch(()=>{});}
+ const header=root.querySelector('header'), nav=root.querySelector('nav');
+ const hud=document.createElement('div');hud.id='battle-web-hud';hud.hidden=true;
+ const controls=document.createElement('dialog');controls.id='battle-controls';
+ controls.innerHTML='<button id="controls-close">Voltar ao jogo</button>';
+ const more=document.createElement('button');more.textContent='⋯';more.setAttribute('aria-label','Mais controles');
+ root.append(hud,controls);more.onclick=()=>controls.showModal();
+ $('controls-close').onclick=()=>controls.close();
+ const full=$('full'),medkit=nav.querySelector('[data-action="medkit"]'),ammo=nav.querySelector('[data-action="ammo"]');
+ let battleLayout=false;
+ function layout(scene){
+   const active=scene==='battle';
+   if(active===battleLayout)return;
+   battleLayout=active;document.body.classList.toggle('battle-layout',active);hud.hidden=!active;
+   controls.close();
+   if(active){hud.append(full,medkit,ammo,more);controls.append(header,nav);}
+   else{root.prepend(header);root.append(nav);header.insertBefore(full,header.querySelector('[data-action="sound"]'));nav.append(medkit,ammo);}
+   positionHud();
+ }
+ function positionHud(){
+   const r=document.getElementById('canvas')?.getBoundingClientRect();if(!r)return;
+   // Free HUD interval: points end at x=278; next wave begins at x=790.
+   hud.style.left=(r.left+r.width*290/1280)+'px';
+   hud.style.top=(r.top+r.height*638/720)+'px';
+   hud.style.width=(r.width*488/1280)+'px';
+   hud.style.height=(r.height*76/720)+'px';
+ }
+ async function fullscreen(){
+   if(document.fullscreenElement){await document.exitFullscreen();return;}
+   if(document.body.classList.contains('immersive')){document.body.classList.remove('immersive');syncFullscreen();return;}
+   try{await document.documentElement.requestFullscreen();try{await screen.orientation?.lock?.('landscape');}catch(e){}}
+   catch(e){document.body.classList.add('immersive');}
+   syncFullscreen();
+ }
+ function syncFullscreen(){
+   const active=Boolean(document.fullscreenElement)||document.body.classList.contains('immersive');
+   full.textContent=active?'Sair da tela':'Tela cheia';full.setAttribute('aria-pressed',String(active));
+   full.title=active?'Sair da tela cheia':'Ampliar jogo em tela cheia';positionHud();
+ }
+ document.addEventListener('fullscreenchange',syncFullscreen);
+ window.addEventListener('resize',positionHud);
+ window.visualViewport?.addEventListener('resize',positionHud);
+ new ResizeObserver(positionHud).observe(document.getElementById('canvas'));
+
  window.fdm={
    load(){return localStorage.getItem(KEY)||''},
    save(raw){try{localStorage.setItem(KEY,raw);return ''}catch(e){return e.message}},
@@ -42,6 +84,7 @@
    async keepAssets(raw){try{const keep=new Set(JSON.parse(raw).map(u=>new URL(u,location.href).href));if(activeBootstrap)keep.add(activeBootstrap);const cache=await caches.open(cacheName);for(const request of await cache.keys())if(!keep.has(request.url))await cache.delete(request);}catch(e){}},
    editName(value){$('player-name').value=value;$('name-dialog').showModal();$('player-name').focus()},
    state(raw){const state=JSON.parse(raw);window.fdmState=state;
+      layout(state.scene);
       if(state.error)fail(state.error);
       if(state.scene!=='loading'){ready=true;$('loading-web').hidden=true;}
       else status(`Preparando artes e animações: ${state.loaded}/${state.total}`,state.loaded/state.total*100);

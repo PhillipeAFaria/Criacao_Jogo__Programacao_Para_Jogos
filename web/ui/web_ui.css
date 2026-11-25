@@ -20,3 +20,17 @@ dialog input{display:block;font-size:20px;margin:12px 0;min-height:44px;max-widt
 canvas#canvas{margin:0!important;right:auto!important;bottom:auto!important}
 dialog select{display:block;width:100%;min-height:44px;font-size:16px;margin:8px 0}dialog{max-height:75dvh;overflow:auto;max-width:540px} @media(max-width:900px){#web-ui nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto}#web-ui nav button{flex-shrink:0}#export{display:block}}
 #touch-cards{min-height:44px;max-width:200px;font-size:16px;border-radius:8px;background:#18353e;color:white}
+
+/* Battle controls occupy the unused footer, not a second bar outside the game. */
+body.battle-layout canvas#canvas{width:min(100vw,calc(100dvh * 16/9))!important;max-height:100dvh!important}
+#battle-web-hud{position:fixed;z-index:11;display:flex;align-items:center;gap:3px}
+#battle-web-hud[hidden]{display:none}
+#web-ui #battle-web-hud button{flex:1;min-width:0;min-height:32px;height:100%;max-height:48px;padding:2px;font-size:clamp(10px,1.4vw,14px);line-height:1.1;background:#102b32ed}
+#web-ui #battle-web-hud button:last-child{flex:0 0 32px;font-size:22px}
+#web-ui #battle-controls header,#web-ui #battle-controls nav{position:static;flex-wrap:wrap;overflow:visible;justify-content:center;padding:8px 0;background:transparent}
+#web-ui #battle-controls header strong{display:none}
+#battle-controls{width:min(540px,85vw)}
+dialog::backdrop{background:#0009}
+body.immersive:not(.battle-layout) #web-ui header{background:#0c2027dd}
+
+#web-ui select[hidden]{display:none}
