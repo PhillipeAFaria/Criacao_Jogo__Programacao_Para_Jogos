@@ -3,7 +3,12 @@ import asyncio
 import json
 import time
 import pygame
-from .app import Game
+from . import app
+from .web_audio import WebAudioSystem
+
+# Browser-only dependency; shared Windows implementation remains unchanged.
+app.AudioSystem = WebAudioSystem
+Game = app.Game
 from .paths import data_dir
 from .web_storage import BrowserStorage
 
@@ -102,11 +107,9 @@ class WebGame(Game):
                 if self.scene == 'developer':
                     self.developer_lab.paused = True
                 self.checkpoint()
-                if pygame.mixer.get_init():
-                    pygame.mixer.pause()
+                self.audio.set_suspended(True)
             elif name == 'visible':
-                if pygame.mixer.get_init():
-                    pygame.mixer.unpause()
+                self.audio.set_suspended(bool(self.bridge.isHidden()))
             elif name in ('medkit','ammo'):
                 self.handle_key(pygame.K_h if name == 'medkit' else pygame.K_t)
             await self.settle_assets()
@@ -116,6 +119,8 @@ async def run(bridge):
     storage.restore()
     bridge.statusJSON(json.dumps('Preparando o jogo…',ensure_ascii=True),0)
     await asyncio.sleep(0)
+    # Configure before Game calls pygame.init(); the browser needs more buffering.
+    pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=2048)
     game = WebGame()
     game.bridge, game.storage = bridge, storage
     game.control_mode = 'mouse'
@@ -124,6 +129,7 @@ async def run(bridge):
     while True:
         now = time.perf_counter()
         hidden = bool(bridge.isHidden())
+        game.audio.set_suspended(hidden)
         await game.commands()
         await game.browser_events()
         # Download/decoding time is not simulated as elapsed combat time.
