@@ -18,7 +18,7 @@ navegador e são separados da versão Windows.
 
 ## Trabalho em equipe
 
-Este é o repositório atual de uma equipe de sete integrantes. Use uma Issue por
+Este é o repositório atual de uma equipe de seis integrantes. Use uma Issue por
 tarefa, branch curta e Pull Request para `main`. Comece por:
 
 - [Como contribuir](CONTRIBUTING.md)
