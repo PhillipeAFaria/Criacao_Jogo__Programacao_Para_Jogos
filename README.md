@@ -1,90 +1,54 @@
 # Fábrica dos Mortos
 
-Jogo de estratégia 2D em Python/Pygame-CE, com três regiões, quatro faixas,
-oito cartas por região e campanha de 12 ondas. Inclui retomada de partida,
-perfil local, ranking e loja de consumíveis.
+Um **tower defense 2D em tempo real**. Distribua suas tropas em quatro faixas, administre os suprimentos e defenda a base contra ondas de zumbis.
 
-**Estado:** Alfa da Beta 5 integrada, versão técnica **1.6.0**. Combina a
-estrutura modular, perfis e loja com as melhorias de jogabilidade da 1.5.3.
-Construção local; nenhuma release foi publicada no GitHub.
+**[Jogar no navegador](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [Executar no Windows](#executar-no-windows) · [Explorar o código](#explorar-o-código)
 
-## Jogar no navegador
+**Versão 1.6.0 · Alfa da Beta 5** · [Histórico de versões](CHANGELOG.md)
 
-**[Abrir Fábrica dos Mortos](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png) · [Atualizar publicação](web/README.md)
+## Executar no Windows
 
-A versão web está publicada no GitHub Pages. Chrome foi testado com emulação
-móvel; validação em celular físico ainda está pendente. Os saves web pertencem ao
-navegador e são separados da versão Windows.
+1. Baixe ou clone o repositório e instale o **Python 3.12 x64**.
+2. Execute [PREPARAR_AMBIENTE.bat](PREPARAR_AMBIENTE.bat) na raiz do projeto. O script cria o ambiente virtual e instala as dependências pela internet.
+3. Execute [JOGAR.bat](JOGAR.bat) para iniciar o jogo.
 
-## Trabalho em equipe
+<details>
+<summary>Executar pelo PowerShell</summary>
 
-Este é o repositório atual de uma equipe de sete integrantes. Use uma Issue por
-tarefa, branch curta e Pull Request para `main`. Comece por:
+Abra o PowerShell na raiz do repositório e use o Python Launcher (<code>py</code>):
 
-- [Como contribuir](CONTRIBUTING.md)
-- [Organização, revisão e responsabilidades](docs/ORGANIZACAO_EQUIPE.md)
-- [Histórico dos três repositórios](docs/HISTORICO_REPOSITORIOS.md)
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py
+```
 
-## Jogar no Windows
+</details>
 
-1. Instale Python **3.12 x64**, com o Python Launcher (`py`).
-2. Execute `PREPARAR_AMBIENTE.bat` uma vez (requer internet).
-3. Execute `JOGAR.bat`.
+## Como jogar
 
-O código usa renderização por software por padrão. OpenGL é opcional:
-defina `SVZ_RENDERER=opengl` antes de abrir o jogo. Para jogar sem instalar Python, use o pacote Windows em `dist/` após a
-construção. Na árvore de desenvolvimento, `JOGAR.bat` executa os fontes;
-`SoldadosVsZumbis.exe` executa a construção local. `CRIAR_EXE.bat` recompila.
+- **Monte a defesa.** Escolha uma carta, gaste suprimentos para posicionar a tropa e aguarde a recarga antes de usar a carta novamente.
+- **Avance pela campanha.** Cada região tem 12 ondas com chefes e subchefes. A campanha passa por Nova York, pelo Egito e pela Cachoeira Contaminada, em Minas Gerais.
+- **Continue de onde parou.** O jogo tem salvamento de partidas, perfil local, ranking e loja de consumíveis. Cada versão, web e Windows, mantém seu próprio progresso.
 
-## Controles principais
+Use o **mouse** para selecionar e posicionar tropas, **P** para pausar, **F5** para salvar e **F11** para alternar a tela cheia na versão Windows. Para abrir a versão web pelo celular, use o [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png).
 
-- Mouse: menus, cartas e posicionamento de tropas.
-- P: pausar; Esc: voltar ao menu; F5: salvar; F11: tela cheia.
-- H: selecionar kit médico; T: selecionar munição tática. Clique na tropa;
-  Esc cancela. Compre os itens no perfil/loja antes da batalha.
-- Modo teclado e remapeamento: disponíveis em Configurações.
-- A retomada usa o perfil ativo para os próximos pontos e consumíveis.
+<img src="assets/interface/menu.png" alt="Arte do menu de Fábrica dos Mortos com três soldados e uma horda de zumbis" width="720">
 
-Campanha, perfil, pontuação e preferências ficam em
-`%LOCALAPPDATA%\SoldadosVsZumbis-Beta5`. No primeiro uso, se essa pasta ainda
-não existir, os dados da pasta antiga `SoldadosVsZumbis` são copiados sem alterar
-os originais. Não há sincronização posterior entre as versões. Falhas são
-registradas em `jogo.log` na pasta nova.
+## Explorar o código
 
-## Melhorias integradas
+| O que você procura | Onde está |
+| --- | --- |
+| Inicialização e menus | [main.py](main.py) e [src/svz/app.py](src/svz/app.py) |
+| Regras de combate e progressão | [Batalha](src/svz/battle.py), [ondas](src/svz/waves.py) e [regiões e unidades](src/svz/content.py) |
+| Imagens e sons | [assets/](assets/) |
+| Testes e ferramentas de build | [tests/](tests/) e [tools/](tools/) |
+| Versão para navegador | [Código de geração e guia de publicação](web/README.md) |
 
-- Cinco segundos de preparação antes do primeiro zumbi; pausa e retomada preservam o contador.
-- Reserva de suprimentos sem teto; geradores e recompensas entregam o valor completo.
-- Vida e dano fixos por tipo de inimigo, preservando os ajustes por dificuldade.
-- Leitura de partidas nos schemas 1, 2 e 3, com gravação no schema 4.
-
-## Organização
-
-| Pasta | Conteúdo |
-|---|---|
-| `src/svz/` | Código do jogo |
-| `assets/` | Imagens, sons e manifesto de integridade |
-| `tests/` | Testes automatizados |
-| `tools/` | Verificação, diagnóstico, benchmark e build |
-| `docs/` | Guias atuais e relatório da revisão |
-| `docs/historico/` | Relatórios e evidências de versões anteriores |
-| `licenses/` | Licenças das dependências |
-| `web/` | Pacote publicado, manifesto, QR Codes e instruções do Pages |
-| `.github/` | Modelos de tarefas/PR e verificações automáticas |
-| `reports/` | Saídas locais de validação e backup anterior à revisão |
-
-Não mova `assets/` nem altere sua estrutura sem atualizar as referências.
-Ambientes `.venv/`, builds e relatórios são locais e ignorados pelo Git.
+O código principal fica em [src/svz/](src/svz/) e usa Python com Pygame-CE. A versão Windows usa renderização por software por padrão e oferece OpenGL como opção. As dependências estão em [requirements.txt](requirements.txt).
 
 ## Documentação
 
-- [Desenvolvimento e validação](docs/DESENVOLVIMENTO.md)
-- [Integração da 1.5.3 e migração de dados](docs/INTEGRACAO_1.6.0.md)
-- [Análise anterior da Alfa](docs/REVISAO_2026-10-30.md)
-- [Histórico de alterações](CHANGELOG.md)
-- [Contribuição](docs/CONTRIBUTING.md)
-- [Créditos](CREDITOS.md) e [licença](LICENSE)
-
-Os relatórios antigos são referências históricas, não evidência de aprovação
-da cópia atual. Os resultados novos ficam em `reports/quality/latest.json`.
-
+- [Desenvolvimento, testes e empacotamento](docs/DESENVOLVIMENTO.md)
+- [Como contribuir](CONTRIBUTING.md) e [organização da equipe](docs/ORGANIZACAO_EQUIPE.md)
+- [Histórico dos repositórios](docs/HISTORICO_REPOSITORIOS.md), [créditos](CREDITOS.md) e [licença MIT](LICENSE)
