@@ -3,10 +3,10 @@
  const KEY='fabrica-dos-mortos:web:save:v1', queue=[];
  let ready=false, busy=false, started=Date.now();
  const root=document.createElement('div'); root.id='web-ui';
- root.innerHTML=`<header><strong>FÃ¡brica dos Mortos</strong><button id="full">Tela cheia</button><button data-action="sound">Som</button><button id="export">Exportar progresso</button></header>
- <section id="loading-web" role="status"><h1>FÃ¡brica dos Mortos</h1><p id="load-label">Carregandoâ€¦ Toque aqui para habilitar o Ã¡udio.</p><progress id="load-progress" max="100"></progress><p class="hint">A primeira abertura baixa as artes do jogo. Mantenha esta pÃ¡gina aberta.</p><button id="retry" hidden>Recarregar</button></section>
+ root.innerHTML=`<header><strong>Fábrica dos Mortos</strong><button id="full">Tela cheia</button><button data-action="sound">Som</button><button id="export">Exportar progresso</button></header>
+ <section id="loading-web" role="status"><h1>Fábrica dos Mortos</h1><p id="load-label">Carregando… Toque aqui para habilitar o áudio.</p><progress id="load-progress" max="100"></progress><p class="hint">A primeira abertura baixa as artes do jogo. Mantenha esta página aberta.</p><button id="retry" hidden>Recarregar</button></section>
  <div id="web-error" role="alert" hidden></div>
- <nav aria-label="Controles do jogo"><button data-action="menu">Voltar / Menu</button><button data-action="pause">Pausar</button><button data-action="wave">PrÃ³xima onda</button><button data-action="remove">Recolher</button><button data-action="medkit">Kit mÃ©dico</button><button data-action="ammo">MuniÃ§Ã£o</button><button data-action="info">Detalhes</button><button data-action="lab">LaboratÃ³rio</button><button data-action="save">Salvar</button></nav>
+ <nav aria-label="Controles do jogo"><button data-action="menu">Voltar / Menu</button><button data-action="pause">Pausar</button><button data-action="wave">Próxima onda</button><button data-action="remove">Recolher</button><button data-action="medkit">Kit médico</button><button data-action="ammo">Munição</button><button data-action="info">Detalhes</button><button data-action="lab">Laboratório</button><button data-action="save">Salvar</button></nav>
  <div id="rotate">Gire o aparelho para jogar na horizontal.</div>
  <dialog id="name-dialog"><form method="dialog"><label>Nome do jogador<input id="player-name" maxlength="20" autocomplete="nickname"></label><button value="cancel">Cancelar</button><button value="save">Salvar nome</button></form></dialog>`;
  document.body.append(root);
@@ -20,7 +20,7 @@
    },{capture:true});
  }
  const labDialog=document.createElement('dialog');labDialog.id='lab-dialog';
- labDialog.innerHTML='<h2>LaboratÃ³rio</h2><label>Mapa <select id="lab-region"><option value="city">Cidade</option><option value="desert">Deserto</option><option value="beach">Cachoeira</option></select></label><button id="lab-team">Trocar soldados / zumbis</button><label>Unidade <select id="lab-unit"></select></label><p>Selecione a unidade, feche e toque na pista para colocÃ¡-la.</p><button id="lab-clear">Limpar</button><button id="lab-close">Voltar ao mapa</button>';
+ labDialog.innerHTML='<h2>Laboratório</h2><label>Mapa <select id="lab-region"><option value="city">Cidade</option><option value="desert">Deserto</option><option value="beach">Cachoeira</option></select></label><button id="lab-team">Trocar soldados / zumbis</button><label>Unidade <select id="lab-unit"></select></label><p>Selecione a unidade, feche e toque na pista para colocá-la.</p><button id="lab-clear">Limpar</button><button id="lab-close">Voltar ao mapa</button>';
  root.append(labDialog);let labOptions='';
  const cards=document.createElement('select');cards.id='touch-cards';cards.setAttribute('aria-label','Selecionar unidade');cards.hidden=true;
  root.querySelector('nav').prepend(cards);let cardOptions='';
@@ -32,7 +32,7 @@
  const hud=document.createElement('div');hud.id='battle-web-hud';hud.hidden=true;
  const controls=document.createElement('dialog');controls.id='battle-controls';
  controls.innerHTML='<button id="controls-close">Voltar ao jogo</button>';
- const more=document.createElement('button');more.textContent='â‹¯';more.setAttribute('aria-label','Mais controles');
+ const more=document.createElement('button');more.textContent='⋯';more.setAttribute('aria-label','Mais controles');
  root.append(hud,controls);more.onclick=()=>controls.showModal();
  $('controls-close').onclick=()=>controls.close();
  const full=$('full'),medkit=nav.querySelector('[data-action="medkit"]'),ammo=nav.querySelector('[data-action="ammo"]');
@@ -87,7 +87,7 @@
       layout(state.scene);
       if(state.error)fail(state.error);
       if(state.scene!=='loading'){ready=true;$('loading-web').hidden=true;}
-      else status(`Preparando artes e animaÃ§Ãµes: ${state.loaded}/${state.total}`,state.loaded/state.total*100);
+      else status(`Preparando artes e animações: ${state.loaded}/${state.total}`,state.loaded/state.total*100);
       document.querySelector('[data-action="lab"]').disabled=!['title','developer'].includes(state.scene);
       if(state.lab){
         $('lab-region').value=state.lab.region;
@@ -112,7 +112,7 @@
  $('retry').onclick=()=>location.reload();
  $('name-dialog').addEventListener('close',()=>{if($('name-dialog').returnValue==='save')send('name',{value:$('player-name').value});});
  $('export').onclick=()=>{send('save');setTimeout(()=>{
-   const raw=localStorage.getItem(KEY);if(!raw){fail('Ainda nÃ£o hÃ¡ progresso salvo para exportar.');return;}
+   const raw=localStorage.getItem(KEY);if(!raw){fail('Ainda não há progresso salvo para exportar.');return;}
    const url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));
    const a=document.createElement('a');a.href=url;a.download='fabrica-dos-mortos-progresso-web.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  },400)};
@@ -135,7 +135,7 @@
  }
  document.addEventListener('contextmenu',e=>e.preventDefault());
  document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
- setInterval(()=>{if(!ready && Date.now()-started>120000){$('retry').hidden=false;status('O carregamento estÃ¡ demorando. Verifique a conexÃ£o e tente recarregar.',-1)}},5000);
+ setInterval(()=>{if(!ready && Date.now()-started>120000){$('retry').hidden=false;status('O carregamento está demorando. Verifique a conexão e tente recarregar.',-1)}},5000);
  // Track the actual application archive download, while keeping the runtime loader intact.
  const fetchOriginal=window.fetch;
  const cacheName='fdm-assets-v1:'+location.pathname.replace(/[^/]*$/,'');
@@ -159,7 +159,7 @@
    const stream=new ReadableStream({async pull(controller){try{
      const {done,value}=await reader.read();if(done){controller.close();return;}
      bytes+=value.byteLength;status(`Baixando jogo: ${(bytes/1048576).toFixed(1)} MB${total?' / '+(total/1048576).toFixed(1)+' MB':''}`,total?bytes/total*100:-1);controller.enqueue(value);
-   }catch(error){fail('NÃ£o foi possÃ­vel baixar os arquivos. Recarregue a pÃ¡gina.');controller.error(error);}}});
+   }catch(error){fail('Não foi possível baixar os arquivos. Recarregue a página.');controller.error(error);}}});
    return new Response(stream,{headers:response.headers,status:response.status,statusText:response.statusText});
  };
 })();

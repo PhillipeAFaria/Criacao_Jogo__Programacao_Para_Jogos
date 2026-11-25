@@ -22,7 +22,7 @@ dialog select{display:block;width:100%;min-height:44px;font-size:16px;margin:8px
 #touch-cards{min-height:44px;max-width:200px;font-size:16px;border-radius:8px;background:#18353e;color:white}
 
 /* Battle controls occupy the unused footer, not a second bar outside the game. */
-body.battle-layout canvas#canvas,body.immersive canvas#canvas{width:min(100vw,calc(100dvh * 16/9))!important;max-height:100dvh!important}
+body.battle-layout canvas#canvas{width:min(100vw,calc(100dvh * 16/9))!important;max-height:100dvh!important}
 #battle-web-hud{position:fixed;z-index:11;display:flex;align-items:center;gap:3px}
 #battle-web-hud[hidden]{display:none}
 #web-ui #battle-web-hud button{flex:1;min-width:0;min-height:32px;height:100%;max-height:48px;padding:2px;font-size:clamp(10px,1.4vw,14px);line-height:1.1;background:#102b32ed}
