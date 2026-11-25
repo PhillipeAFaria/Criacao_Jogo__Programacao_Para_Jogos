@@ -87,3 +87,9 @@ Cache depende do navegador e não garante funcionamento offline.
 O tabuleiro usa a altura disponível, preservando 16:9, sem cortar as pistas. Tela cheia, Kit médico e Munição ficam no espaço entre Pontos e Próxima onda. O botão **⋯** abre os demais controles (incluindo som, salvamento, exportação e seleção de unidade). Tela cheia solicita o modo nativo do navegador; quando indisponível, mantém o layout ampliado dentro da página. Barras laterais podem existir em telas mais largas que 16:9.
 
 Validação automatizada: `python web/tests/check_mobile_layout.py` verifica quatro resoluções, geometria, toque, entrada/saída de tela cheia e alternativa sem suporte nativo. `FDM_TEST_SITE=web/site` seleciona o pacote publicado para `python web/tests/smoke_browser.py`. Os testes usam Chrome com emulação de toque; não substituem validação em celular físico.
+
+### Áudio no navegador
+
+A versão web usa `web/runtime/svz/web_audio.py`: música e ambiente têm canais reservados, efeitos não reiniciam esses canais, e os loops são iniciados apenas nas transições. Ao ocultar a guia (ou girar para retrato), os sons são interrompidos; no retorno, apenas música e ambiente são restaurados, respeitando Som desligado. Efeitos antigos não são retomados. O mixer recebe buffer de 2048 amostras antes da inicialização do Pygame. O áudio Windows e as regras de combate permanecem intactos.
+
+Os testes `web/tests/test_web_audio.py` verificam idempotência, mute, visibilidade, troca de ambiente e saturação de efeitos com mixer SDL. Emulação não comprova a qualidade sonora em aparelhos físicos.

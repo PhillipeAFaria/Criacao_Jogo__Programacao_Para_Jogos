@@ -38,7 +38,7 @@ async def custom_site():
 
     # unpack filesystem from compressed archive into work dir
     import tarfile
-    async with platform.fopen("bootstrap-543e99e9e6c34da4.tar.gz", "rb") as archive:
+    async with platform.fopen("bootstrap-9e971e9bfd7e8183.tar.gz", "rb") as archive:
         with tarfile.open(fileobj=archive, mode="r:gz") as tar:
             tar.extractall(path=appdir.as_posix(), filter='tar')
 
