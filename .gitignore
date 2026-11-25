@@ -26,3 +26,6 @@ _internal/
 *.sqlite3-*
 *.db
 campanha*.json
+
+.web-build/
+.venv-web/

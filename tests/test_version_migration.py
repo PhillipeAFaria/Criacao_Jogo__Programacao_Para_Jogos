@@ -103,9 +103,22 @@ class SnapshotMigrationTests(unittest.TestCase):
         self.assertEqual(resumed.defenders[0].idle_reload_delay, 0.0)
         self.assertEqual(resumed.enemies[0].hp, battle.enemies[0].hp)
 
+        # Campos aditivos também podem faltar em saves antigos de schema 4.
         snapshot["schema"] = SCHEMA
-        with self.assertRaises(ValueError):
-            restore(snapshot, self.game)
+        preserved = copy.deepcopy(snapshot)
+        current, _ = restore(snapshot, self.game)
+        self.assertEqual(snapshot, preserved)
+        self.assertEqual(current.enemies[0].gun_windup, 0.125)
+        self.assertEqual(current.enemies[0].necropolis_heal_timer, 5.0)
+        self.assertEqual(current.defenders[0].idle_reload_delay, 0.0)
+        for invalid in ("bad_timer", "missing_hp", "unknown_field"):
+            broken = copy.deepcopy(snapshot)
+            fields = next(o for o in broken["objects"] if o["type"] == "Enemy")["fields"]
+            if invalid == "bad_timer": fields["gun_windup"] = "invalid"
+            elif invalid == "missing_hp": del fields["hp"]
+            else: fields["unknown_field"] = 0
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                restore(broken, self.game)
 
     def test_future_and_mismatched_document_schemas_are_rejected(self):
         old = json.loads((FIXTURES / "alfa_schema1.json").read_text(encoding="utf-8"))

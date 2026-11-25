@@ -1736,7 +1736,6 @@ CRAWLER_ENEMIES = frozenset(
 ACTIVE_ENEMY_SKILL_TAGS = frozenset(
     {
         "dash",
-        "naval_hunter",
         "gun",
         "acid",
         "shock",

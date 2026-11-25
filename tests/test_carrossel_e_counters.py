@@ -77,13 +77,25 @@ class CarrosselECountersTests(unittest.TestCase):
         self.assertEqual(blade.defense_broken, 0)
         self.assertAlmostEqual(initial - 50, blade.hp)
 
-    def test_mergulhador_e_rompido_por_precisao_naval(self) -> None:
+    def test_mergulhador_submerso_so_recebe_torpedo_e_emerso_recebe_bala(self) -> None:
         battle = Battle(self.game, "beach", [("atirador_precisao_marinha", "Precisão")])
         diver = Enemy("mergulhador", 1, ENEMIES["mergulhador"], "beach", 7)
         marksman = Defender("atirador_precisao_marinha", "Precisão", 1, 2, DEFENSES["atirador_precisao_marinha"], 0, region="beach")
         battle.enemies.append(diver)
+        diver.x = marksman.x + 100
+        initial = diver.hp
+        self.assertTrue(diver.submerged)
+        self.assertIsNone(battle.target_in_range(marksman))
         battle.take_enemy_damage(diver, 10, source=marksman)
-        self.assertGreater(diver.defense_broken, 0)
+        self.assertEqual(diver.hp, initial)
+        self.assertEqual(diver.defense_broken, 0)
+        battle.take_enemy_damage(diver, 10, effect="torpedo")
+        self.assertLess(diver.hp, initial)
+        diver.diver_surfaced = True
+        self.assertIs(battle.target_in_range(marksman), diver)
+        initial = diver.hp
+        battle.take_enemy_damage(diver, 10, source=marksman)
+        self.assertLess(diver.hp, initial)
 
     def test_especialistas_priorizam_a_ameaca_da_propria_funcao(self) -> None:
         battle = Battle(self.game, "desert", [("guardiao_laminas", "Guardião")])

@@ -109,14 +109,11 @@ class QualidadeAnimacoesBeta4Tests(unittest.TestCase):
         for actor in ENEMY_ROSTER_ROWS:
             states = self.clips[actor]
             self.assertEqual({"move", "idle", "bite", "hit", "skill"} | ({"throw"} if actor == "beach_deep_hunter" else set()), set(states), actor)
-            # A base aprovada conserva oito passos intermediários para não
-            # transformar caminhada em trote. O restante do elenco mantém no
-            # mínimo quatro poses autênticas por ação.
-            expected_minimum = 8
-            self.assertGreaterEqual(len(states["move"].frames), expected_minimum, actor)
-            self.assertGreaterEqual(len(states["bite"].frames), expected_minimum, actor)
-            self.assertGreaterEqual(len(states["hit"].frames), expected_minimum, actor)
-            self.assertGreaterEqual(len(states["skill"].frames), expected_minimum, actor)
+            # Os dois chefes reconstruídos usam quatro poses autênticas de
+            # ataque/habilidade; sua caminhada continua com oito passos.
+            for action in ("move", "bite", "hit", "skill"):
+                four_poses = actor in {"beach_boss_hunter", "beach_boss_colossus"} and action in {"bite", "skill"}
+                self.assertGreaterEqual(len(states[action].frames), 4 if four_poses else 8, (actor, action))
             for state, clip in states.items():
                 for index, frame in enumerate(clip.frames):
                     mask = pygame.mask.from_surface(frame, threshold=8)
@@ -161,7 +158,8 @@ class QualidadeAnimacoesBeta4Tests(unittest.TestCase):
                 "city_boss_director_4x2_v2.png",
                 "desert_zombies_hd_16x6_v3.png",
                 "beach_zombies_hd_16x6_v3.png",
-                "beach_elites_rebuilt_16x6_v1.png",
+                "beach_abyssal_hunter_4x4_v1.png",
+                "beach_green_colossus_4x4_v1.png",
             },
             rebuilt,
         )
@@ -204,12 +202,22 @@ class QualidadeAnimacoesBeta4Tests(unittest.TestCase):
         for actor in ENEMY_ROSTER_ROWS:
             for state in ("move", "bite", "hit", "skill"):
                 clip = self.clips[actor][state]
-                self.assertGreaterEqual(len(clip.frames), 8, f"animação rala {actor}:{state}")
+                four_poses = actor in {"beach_boss_hunter", "beach_boss_colossus"} and state in {"bite", "skill"}
+                self.assertGreaterEqual(len(clip.frames), 4 if four_poses else 8, f"animação rala {actor}:{state}")
                 self.assertGreaterEqual(
                     len({pygame.image.tobytes(frame, "RGBA") for frame in clip.frames}),
-                    4 if actor == "city_boss_director" else 6,
+                    4 if four_poses or actor == "city_boss_director" else 6,
                     f"quadros repetidos demais {actor}:{state}",
                 )
+
+    def test_chefes_reconstruidos_preservam_poses_e_tempo_de_impacto(self):
+        for actor in ("beach_boss_hunter", "beach_boss_colossus"):
+            for state, durations in (("bite", (.21, .16, .20, .27)), ("skill", (.24, .32, .28, .26))):
+                clip = self.clips[actor][state]
+                self.assertEqual(len(clip.frames), 4)
+                self.assertEqual(tuple(clip.frame_durations), durations)
+                self.assertFalse(clip.loop)
+            self.assertEqual(tuple(self.clips[actor]["move"].frame_durations), (.14,) * 8)
 
     def test_cada_soldado_tem_ritmo_proprio_de_arma_registrado(self) -> None:
         soldier_actors = {
@@ -275,7 +283,7 @@ class QualidadeAnimacoesBeta4Tests(unittest.TestCase):
         samples = {
             actor: sum(_main_figure(frame).height for frame in states["move"].frames)
             / len(states["move"].frames)
-            / (2 if actor in {"city_police_infected", "city_scientist", "city_technician", "city_demolisher", "city_quarantine_brute", "city_mutant_commander", "city_boss_director", "city_boss_commander", "city_boss_alpha", "desert_zombie_v2", "desert_archer", "desert_beetle_host", "desert_looter", "desert_sarcophagus_guard", "desert_plague_priest", "desert_mutant_enforcer", "desert_boss_anubis", "desert_boss_commander", "desert_boss_colossus", "beach_surfer", "beach_diver", "beach_fisher", "beach_puffer", "beach_lifeguard", "beach_deep_hunter", "beach_boss_brute"} else 1)
+            / (2 if actor in {"city_police_infected", "city_scientist", "city_technician", "city_demolisher", "city_quarantine_brute", "city_mutant_commander", "city_boss_director", "city_boss_commander", "city_boss_alpha", "desert_zombie_v2", "desert_archer", "desert_beetle_host", "desert_looter", "desert_sarcophagus_guard", "desert_plague_priest", "desert_mutant_enforcer", "desert_boss_anubis", "desert_boss_commander", "desert_boss_colossus", "beach_surfer", "beach_diver", "beach_fisher", "beach_puffer", "beach_lifeguard", "beach_deep_hunter", "beach_boss_brute", "beach_boss_hunter", "beach_boss_colossus"} else 1)
             for actor, states in self.clips.items()
             if actor in ENEMY_ROSTER_ROWS
         }

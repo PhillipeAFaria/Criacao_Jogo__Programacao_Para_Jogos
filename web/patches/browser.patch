@@ -1,0 +1,102 @@
+--- a/src/svz/actor_animation.py
++++ b/src/svz/actor_animation.py
+@@ -1,7 +1,9 @@
+ """Passagem entre poses de combate no relógio do próprio ator."""
+ from dataclasses import dataclass, field
+ 
+-import numpy as np
++import sys
++if sys.platform != "emscripten":
++    import numpy as np
+ import pygame
+ 
+ from .animation import AnimationClip, AnimationManager
+--- a/src/svz/assets.py
++++ b/src/svz/assets.py
+@@ -340,7 +340,12 @@
+     def prepare_production_animations(self) -> None:
+         """Pré-carrega somente as folhas novas do elenco jogável atual."""
+         if self.production_clips is None:
+-            self.production_clips = build_production_clips()
++            import sys
++            if sys.platform == "emscripten":
++                from .web_assets import WebClips
++                self.production_clips = WebClips()
++            else:
++                self.production_clips = build_production_clips()
+ 
+     def new_production_animation(self, actor: str) -> AnimationManager:
+         self.prepare_production_animations()
+--- a/src/svz/paths.py
++++ b/src/svz/paths.py
+@@ -11,9 +11,9 @@
+     override = os.environ.get('SVZ_DATA_DIR')
+     if override:
+         return Path(override).expanduser().resolve()
+-    local = os.environ.get('LOCALAPPDATA')
+-    base = Path(local) if local else Path.home() / 'AppData' / 'Local'
+-    return base / 'SoldadosVsZumbis-Beta5'
++    if sys.platform == "emscripten":
++        return Path("/home/web_user/fabrica-dos-mortos")
++    return ROOT / ".web-preview-data"
+ 
+ 
+ def save_path() -> Path:
+--- a/src/svz/scenarios.py
++++ b/src/svz/scenarios.py
+@@ -7,7 +7,7 @@
+ from pathlib import Path
+ from typing import Any
+ 
+-import numpy as np
++
+ import pygame
+ 
+ from svz.animation import SpriteSheet
+@@ -42,17 +42,16 @@
+     rect = surface.get_bounding_rect(min_alpha=8)
+     if rect.width <= 0:
+         return surface.get_width() // 2, surface.get_height()
+-    alpha = pygame.surfarray.array_alpha(surface)
+-    band_height = max(3, round(rect.height * 0.08))
+-    band_top = max(rect.top, rect.bottom - band_height)
+-    band = alpha[rect.left : rect.right, band_top : rect.bottom]
+-    opaque_x, opaque_y = np.nonzero(band >= min_alpha)
+-    if opaque_x.size == 0:
+-        return rect.centerx, rect.bottom
+-    absolute_y = opaque_y + band_top
+-    weights = 1.0 + (absolute_y - band_top)
+-    base_x = rect.left + round(float(np.average(opaque_x, weights=weights)))
+-    return base_x, rect.bottom
++    band_top = max(rect.top, rect.bottom-max(3,round(rect.height*.08)))
++    total = weighted = 0
++    for y in range(band_top,rect.bottom):
++        weight = 1+y-band_top
++        for x in range(rect.left,rect.right):
++            if surface.get_at((x,y)).a >= min_alpha:
++                total += weight
++                weighted += x*weight
++    return (round(weighted/total) if total else rect.centerx),rect.bottom
++
+ 
+ 
+ class ScenarioRuntime:
+--- a/src/svz/video.py
++++ b/src/svz/video.py
+@@ -2,6 +2,7 @@
+ from __future__ import annotations
+ 
+ import json
++import sys
+ import os
+ from pathlib import Path
+ import pygame
+@@ -64,7 +65,7 @@
+         return write_json({"version": 1, "fullscreen": self.fullscreen}, self.path)
+ 
+     def create_mode(self, flags: int = 0) -> pygame.Surface:
+-        size = self.desktop_size if self.fullscreen else self.window_size
++        size = LOGICAL_SIZE if sys.platform == "emscripten" else (self.desktop_size if self.fullscreen else self.window_size)
+         surface = pygame.display.set_mode(
+             size, flags | (pygame.FULLSCREEN if self.fullscreen else 0),
+             display=self.display_index,

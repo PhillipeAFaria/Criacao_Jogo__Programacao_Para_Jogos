@@ -35,11 +35,11 @@ Não foi criado CODEOWNERS com nomes ou responsabilidades presumidos.
   **1 aprovação**, descartando aprovações antigas após novos commits.
 - Revisão humana continua sendo o processo esperado; CI não avalia qualidade visual.
 
-Inicialmente, o check obrigatório é `Validar estrutura e pacote web`. A suíte
-Windows executa e mostra suas falhas, mas será obrigatória depois da correção
-das [pendências conhecidas](PENDENCIAS_TESTES.md).
+Os checks obrigatórios incluem integridade do pacote web e a suíte Python
+Windows, após validação no GitHub. A [linha de base corrigida](PENDENCIAS_TESTES.md)
+registra o diagnóstico das falhas anteriores. Não desative checks para integrar
+uma alteração que ainda falha.
 
-Não tornar um teste obrigatório antes de ele existir e passar no GitHub.
 Não usar a exigência de revisão como substituto para cadastrar os integrantes.
 
 ## Trabalho semanal
@@ -54,14 +54,12 @@ a documentação foi atualizada e não há arquivos pessoais. Publicação é um
 separada, registrada pelo workflow do Pages. Build Windows deve ser anexado a uma
 Release quando validado; não adicionar EXE/ZIP ao histórico Git.
 
-## Limitação atual da versão web
+## Geração da versão web
 
-`web/site/` contém o pacote publicado e `web/build_site.py` verifica seus hashes e
-monta o site. Ainda não recompila Python/Pygame para web a partir de `src/`.
-Os adaptadores e o processo completo de geração estão na cópia local
-`Fabrica_dos_Mortos_Web`. Uma tarefa prioritária é versionar essa cadeia de geração
-com instruções reproduzíveis, preservando a versão Windows. Até isso ser feito,
-alterar `src/` não atualiza automaticamente o jogo publicado.
+A cadeia completa está versionada em `web/`. `web/generate.py` gera em uma cópia
+isolada a partir de `src/` e `assets/`, sem outra pasta local. O procedimento está
+em [web/README.md](../web/README.md). Alterar fontes não publica automaticamente:
+é preciso gerar/validar o pacote e executar o deploy manual após integrar o PR.
 
 ## Créditos e licença
 

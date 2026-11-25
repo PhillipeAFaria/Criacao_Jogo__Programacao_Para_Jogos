@@ -253,7 +253,6 @@ DEFENDER_INTERACTIONS: dict[str, str] = {
 
 ENEMY_ACTIVE_INTERACTIONS: dict[str, str] = {
     "dash": "arrancada_aquática",
-    "naval_hunter": "investida_submersa",
     "gun": "tiro_inimigo",
     "acid": "cuspe_ácido",
     "shock": "pulso_elétrico",

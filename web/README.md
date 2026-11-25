@@ -1,23 +1,83 @@
-# Fábrica dos Mortos — versão web
+# Fábrica dos Mortos — web
 
 [Jogar no navegador](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)
+· [QR Codes](QR_Code/)
 
-Publicada em 24/11/2026 pelo workflow `fabrica-pages.yml`.
-Os [QR Codes](QR_Code/) são estáticos, apontam diretamente para essa página e incluem PNG e SVG, com e sem identificação.
+## Gerar em um clone novo
 
-## Atualização
+Requisitos: Git, Python 3.12 x64, internet para dependências e CDN do Pygbag.
+Comandos a partir da raiz do repositório no PowerShell:
 
-1. Na cópia de desenvolvimento web, execute `ATUALIZAR_WEB.bat` e os testes.
-2. Copie os arquivos de `github-pages/web/site/` e `web/manifest.json` preparados para esta pasta. Remova somente os recursos antigos que deixaram de fazer parte do manifesto.
-3. Preserve os bytes dos arquivos de `web/site/` conforme `.gitattributes`. Execute `python web/build_site.py` para conferir os hashes.
-4. Envie o commit. Em Actions, abra **Publicar Fabrica dos Mortos**, selecione **Run workflow** na branch `main`.
-5. Aguarde build e deploy concluírem e teste o endereço acima.
+```powershell
+py -3.12 -m venv .venv-web
+.\.venv-web\Scripts\python.exe -m pip install -r web/requirements-build.txt
+.\.venv-web\Scripts\python.exe -X utf8 web/generate.py
+```
 
-O workflow é manual. Um push sozinho não atualiza o site. Mantenha o repositório e o endereço para continuar usando os mesmos QR Codes.
-Não altere a chave/formato do save web sem migração. Os saves pertencem ao navegador e são separados dos saves Windows; limpar os dados do site remove o progresso local.
+Não precisa de outra pasta do projeto, dos repositórios anteriores ou de saves.
+O comando cria `.web-build/`, copia os fontes/recursos compartilhados, aplica
+adaptações de navegador **somente na cópia**, pré-calcula sprites, executa Pygbag,
+separa mapas e verifica pixels, tempos, armazenamento e troca de mapas.
+A preparação inclui NumPy; o runtime do navegador utiliza os quadros prontos.
+Uma nova geração substitui apenas a pasta temporária reconhecida pelo comando.
 
-## Testes e limites
+Resultado: `.web-build/web_game/build/web/`. Relatórios: `.web-build/reports/`.
+O comando confere que os fontes e assets originais não foram alterados.
+A reprodução preserva conteúdo e mecânicas; não promete arquivo compactado com
+hash idêntico entre execuções, pois o empacotamento inclui metadados de arquivos.
 
-106 testes Python aprovados na preparação; pixels e durações de 2941 quadros conferidos. Chrome desktop local testado; na página pública, Chrome com emulação móvel testou digitação, campanha, salvar/recarregar/continuar, cache, controle de som e orientação. A pausa foi testada por evento de visibilidade simulado. Não houve teste em celular físico nem verificação de áudio por escuta.
+## Prévia e teste do navegador
 
-Download inicial aproximado: 42,41 MiB, além do runtime externo Pygbag. Os mapas carregam animações sob demanda; total com todos os mapas aproximadamente 163 MiB. Cache depende do espaço e das políticas do navegador. Sem garantia offline. O código e os saves Windows não foram substituídos.
+```powershell
+.\.venv-web\Scripts\python.exe -m http.server 8769 --directory .web-build/web_game/build/web
+```
+
+Abra http://localhost:8769 somente para testes. Para teste automatizado, com
+Google Chrome instalado:
+
+```powershell
+.\.venv-web\Scripts\python.exe -m pip install -r web/requirements-browser.txt
+.\.venv-web\Scripts\python.exe web/tests/smoke_browser.py
+```
+
+Esse teste usa perfil isolado e emulação móvel: digitação, acentos, campanha,
+save/continuar, cache, som e orientação. Não equivale a aparelho físico nem a
+verificação de áudio por escuta. Não foi validada toda a campanha no navegador.
+
+## Atualizar os arquivos publicados
+
+```powershell
+.\.venv-web\Scripts\python.exe -X utf8 web/generate.py --update-site
+```
+
+Além de gerar e testar, atualiza `web/site/` e `web/manifest.json` juntos. O comando
+recusa arquivos locais não reconhecidos ou alterados no site, para não apagá-los.
+Revise o diff, abra PR e aguarde os checks. Nunca envie `.web-build/`, ambientes
+Python ou saves. Não edite o tar.gz manualmente.
+
+Depois do merge, em Actions execute **Publicar Fabrica dos Mortos** na branch
+`main`. O deploy continua manual: gerar ou fazer push sozinho não publica.
+O workflow **Gerar web dos fontes** demonstra a geração em checkout limpo e
+executa nos PRs que alteram seus insumos, sem publicar nem atualizar `web/site/`.
+
+Mantenha repositório e endereço para preservar os QR Codes. Preserve o formato e
+a chave do save ou forneça migração. O save web pertence ao navegador/origem e é
+separado do Windows; limpar dados do site remove o progresso local.
+
+## Estrutura
+
+- `runtime/`: entrada web e módulos exclusivos de navegador.
+- `patches/browser.patch`: adaptações pequenas aos módulos compartilhados.
+- `ui/`: controles HTML/CSS/JS, incluindo toque e edição do nome.
+- `tools/`: pré-cálculo, Pygbag, empacotamento e verificação sem perda.
+- `tests/`: regressões de armazenamento/streaming e teste de navegador.
+- `site/` + `manifest.json`: versão gerada aprovada para publicação.
+- `build_site.py`: confere e monta o pacote publicado; não recompila o jogo.
+
+Ao alterar módulos compartilhados que tenham patches web, revise o patch junto.
+A aplicação do patch deve falhar diante de contexto incompatível, em vez de usar
+uma cópia antiga silenciosamente. Nunca substitua `src/` pelos adaptadores web.
+
+Download inicial aproximado: 42,4 MiB mais runtime externo. As animações são
+baixadas por mapa, com cache; total com todos os mapas aproximadamente 163 MiB.
+Cache depende do navegador e não garante funcionamento offline.

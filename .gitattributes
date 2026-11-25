@@ -7,3 +7,6 @@ assets/**/*.wav binary
 
 # Preserve exact bytes validated by the web manifest.
 web/site/** -text
+
+# Browser patches must apply consistently on Windows and Linux.
+web/patches/*.patch text eol=lf
