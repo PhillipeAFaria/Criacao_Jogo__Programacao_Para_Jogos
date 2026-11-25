@@ -1,25 +1,22 @@
-# Pendências da suíte de testes
+# Correção da linha de base de testes
 
-Execução local em 24/11/2026: 353 testes, 7 falhas, nenhum erro de importação
-e nenhum teste ignorado, com PYTHONPATH=src, SDL dummy e dados isolados.
-O conteúdo de src/, assets/ e tests/ não foi alterado na organização do repositório.
+Em 24/11/2026 a suíte tinha 353 testes, 346 aprovados e sete falhas.
+Após investigar os contratos vigentes, foram corrigidas as seguintes expectativas:
 
-## Falhas observadas
+| Falha | Correção e evidência |
+|---|---|
+| Escala dos chefes | Os dois chefes aquáticos novos também usam sprites 2x; a comparação agora normaliza essa resolução, preservando os limites de proporção |
+| Estados visíveis | Ataque e habilidade desses dois chefes têm quatro poses autênticas; caminhada mantém oito. Nenhum quadro foi criado ou descartado |
+| Intermediários em todas as ações | Limite específico para essas sequências de quatro poses; continuam exigidos quadros distintos. Novo teste fixa durações e ausência de loop |
+| Folhas de produção | As duas folhas 4x4 atuais substituíram a folha coletiva antiga; o teste verifica os arquivos atuais |
+| Mergulhador | Teste antigo contradizia a imunidade submersa. Agora verifica seleção de alvo, bala ignorada, torpedo aceito e bala aceita depois de emergir |
+| Migração de save | Campos aditivos já recebem defaults também em schema 4. Teste verifica esse suporte sem modificar a entrada e continua rejeitando timer inválido, HP ausente e campo desconhecido |
+| Classificação de interação | `naval_hunter` não está associado a nenhuma unidade atual. Removido apenas das listas de habilidades ativas/classificação; nenhuma unidade recebeu ou perdeu tags |
 
-- `test_boss_e_maior_sem_ficar_desproporcional (test_animacoes_qualidade.QualidadeAnimacoesBeta4Tests.test_boss_e_maior_sem_ficar_desproporcional)`
-- `test_elenco_inimigo_novo_tem_todos_os_estados_visiveis (test_animacoes_qualidade.QualidadeAnimacoesBeta4Tests.test_elenco_inimigo_novo_tem_todos_os_estados_visiveis)`
-- `test_elenco_regional_tem_intermediarios_em_todas_as_acoes (test_animacoes_qualidade.QualidadeAnimacoesBeta4Tests.test_elenco_regional_tem_intermediarios_em_todas_as_acoes)`
-- `test_folhas_de_producao_cobrem_todo_o_elenco_regional (test_animacoes_qualidade.QualidadeAnimacoesBeta4Tests.test_folhas_de_producao_cobrem_todo_o_elenco_regional)`
-- `test_mergulhador_e_rompido_por_precisao_naval (test_carrossel_e_counters.CarrosselECountersTests.test_mergulhador_e_rompido_por_precisao_naval)`
-- `test_schema3_preserves_existing_windup_and_fills_missing_timers (test_version_migration.SnapshotMigrationTests.test_schema3_preserves_existing_windup_and_fills_missing_timers)`
-- `test_todo_personagem_tem_interacao_classificada (test_visual_layout.VisualLayoutTests.test_todo_personagem_tem_interacao_classificada)`
+Validação local: **354 testes aprovados**, nenhum ignorado. Nenhum atributo,
+quadro, duração, regra de dano ou formato de save foi alterado para satisfazer
+os testes. A alteração de produção se limita à remoção da classificação inativa.
 
-É necessário comparar cada expectativa com as regras atuais: uma falha pode
-ser regressão ou teste desatualizado. Não atualizar valores esperados apenas para
-fazer a CI passar. Registrar reprodução e critério de correção no PR.
-
-O job de testes Windows continua executando e sinalizando falhas, mas não é
-um check obrigatório até resolver esta linha de base. O check obrigatório inicial
-é `Validar estrutura e pacote web`, que confere sintaxe e hashes do pacote web.
-Depois de corrigir as falhas e confirmar o job verde no GitHub, adicioná-lo à
-proteção de main. Não usar o sucesso do check estrutural como aprovação do combate.
+A suíte Windows deve passar no GitHub antes de ser incluída na proteção de
+`main`. Consulte Actions para o resultado vinculado ao commit atual, em vez de
+interpretar este relatório histórico como aprovação de alterações futuras.

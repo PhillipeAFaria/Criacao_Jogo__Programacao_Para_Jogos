@@ -1,0 +1,43 @@
+name: Gerar web dos fontes
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'web/runtime/**'
+      - 'web/patches/**'
+      - 'web/ui/**'
+      - 'web/tools/**'
+      - 'web/tests/**'
+      - 'web/generate.py'
+      - 'web/requirements-*.txt'
+      - '.github/workflows/gerar-web.yml'
+permissions:
+  contents: read
+concurrency:
+  group: gerar-web-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Gerar web em checkout limpo
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: web/requirements-build.txt
+      - run: python -m pip install -r web/requirements-build.txt
+      - name: Gerar e verificar sem publicar
+        run: python -X utf8 web/generate.py
+      - name: Guardar relatorios da geracao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verificacao-geracao-web
+          path: .web-build/reports/*.json
+          if-no-files-found: warn
