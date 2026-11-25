@@ -81,3 +81,9 @@ uma cópia antiga silenciosamente. Nunca substitua `src/` pelos adaptadores web.
 Download inicial aproximado: 42,4 MiB mais runtime externo. As animações são
 baixadas por mapa, com cache; total com todos os mapas aproximadamente 163 MiB.
 Cache depende do navegador e não garante funcionamento offline.
+
+### Controles durante a batalha no celular
+
+O tabuleiro usa a altura disponível, preservando 16:9, sem cortar as pistas. Tela cheia, Kit médico e Munição ficam no espaço entre Pontos e Próxima onda. O botão **⋯** abre os demais controles (incluindo som, salvamento, exportação e seleção de unidade). Tela cheia solicita o modo nativo do navegador; quando indisponível, mantém o layout ampliado dentro da página. Barras laterais podem existir em telas mais largas que 16:9.
+
+Validação automatizada: `python web/tests/check_mobile_layout.py` verifica quatro resoluções, geometria, toque, entrada/saída de tela cheia e alternativa sem suporte nativo. `FDM_TEST_SITE=web/site` seleciona o pacote publicado para `python web/tests/smoke_browser.py`. Os testes usam Chrome com emulação de toque; não substituem validação em celular físico.

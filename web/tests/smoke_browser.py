@@ -40,9 +40,16 @@ with sync_playwright() as p:
   results['native_keyboard_typing_and_backspace']=True
   page.locator('button[value="save"]').tap();scene('difficulty')
   tap(200,520);scene('campaign');tap(200,320);scene('battle')
+  page.get_by_role("button",name="Mais controles").tap()
   page.locator('[data-action="save"]').tap();page.wait_for_timeout(1500)
   saved=page.evaluate('localStorage.getItem("fabrica-dos-mortos:web:save:v1")')
   assert saved and 'campanha.settings.json' in saved
+  page.locator('#controls-close').tap()
+  page.locator('#full').tap();page.wait_for_timeout(500)
+  assert page.evaluate('Boolean(document.fullscreenElement)')
+  results['native_fullscreen']=True
+  results['battle_canvas']=page.locator('#canvas').bounding_box()
+  assert results['battle_canvas']['height']>=389
   results['touch_campaign_and_profile']=True
   page.screenshot(path=str(root/'reports/mobile-battle.png'))
   results['cold_city_download']=page.evaluate('window.fdmNetwork')
@@ -62,9 +69,11 @@ with sync_playwright() as p:
   page.wait_for_timeout(800)
   assert page.evaluate('window.fdmState.combat.paused')
   results['simulated_visibility_pause_and_no_auto_resume']=True
+  page.get_by_role('button',name='Mais controles').tap()
   sound=page.evaluate('window.fdmState.sound')
   page.locator('[data-action="sound"]').tap();page.wait_for_timeout(500)
   assert page.evaluate('window.fdmState.sound')!=sound
+  page.locator('#controls-close').tap()
   results['audio_initialized_and_toggle']=page.evaluate('window.fdmState.audio')
   page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(800)
   assert page.locator('#rotate').is_visible();results['portrait_notice']=True
