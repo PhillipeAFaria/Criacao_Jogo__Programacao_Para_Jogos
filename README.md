@@ -1,30 +1,54 @@
 # Fábrica dos Mortos
 
-Jogo de estratégia 2D em Python e Pygame-CE. Posicione tropas em quatro faixas para defender sua base contra 12 ondas de zumbis. A campanha tem três regiões, com oito cartas por região.
+Tower defense 2D em tempo real, desenvolvido em Python com Pygame-CE. Posicione tropas em quatro faixas e defenda sua base contra hordas de zumbis.
 
-**[Jogar no navegador](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png)
+**[Jogar no navegador](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png) · [Histórico de versões](CHANGELOG.md)
 
-## Executar no Windows
+**Versão 1.6.0 · Alfa da Beta 5**
 
-1. Baixe ou clone este repositório e instale o **Python 3.12 x64** com o Python Launcher (`py`).
-2. Na pasta do repositório, execute [PREPARAR_AMBIENTE.bat](PREPARAR_AMBIENTE.bat) uma vez para instalar as dependências. Essa etapa requer internet.
+## Início rápido
+
+### Windows
+
+1. Baixe ou clone o repositório e instale o **Python 3.12 x64**.
+2. Na raiz do projeto, execute [PREPARAR_AMBIENTE.bat](PREPARAR_AMBIENTE.bat) para criar o ambiente virtual e instalar as dependências. Essa etapa requer internet.
 3. Execute [JOGAR.bat](JOGAR.bat).
 
-Use o mouse para escolher cartas e posicionar tropas. Pressione **P** para pausar, **F5** para salvar e **F11** para alternar a tela cheia. Os saves do navegador e do Windows são independentes.
+<details>
+<summary>Executar pelo PowerShell</summary>
 
-## Encontrar o código
+Na raiz do repositório, com o comando <code>py</code> disponível:
 
-| Onde | O que contém |
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py
+```
+
+</details>
+
+## Como funciona
+
+- **Defesa tática.** Escolha cartas de tropas, gaste suprimentos para posicioná-las e gerencie o tempo de recarga.
+- **Campanha.** Enfrente 12 ondas com chefes e subchefes em Nova York, no Egito e em Minas Gerais.
+- **Progresso.** Retome partidas salvas e use o perfil local para acessar o ranking e a loja de consumíveis. A versão web e a versão Windows guardam o progresso separadamente.
+
+Use o **mouse** para jogar, **P** para pausar, **F5** para salvar e **F11** para alternar a tela cheia.
+
+## Onde encontrar o código
+
+| Caminho | Conteúdo |
 | --- | --- |
-| [`main.py`](main.py) | Ponto de entrada do jogo |
-| [`src/svz/`](src/svz/) | Código do jogo, incluindo menus, campanha e combate |
-| [`assets/`](assets/) | Imagens e sons |
-| [`tests/`](tests/) e [`tools/`](tools/) | Testes, validação e empacotamento |
-| [`docs/`](docs/) e [`web/`](web/) | Documentação e arquivos da versão web |
+| [main.py](main.py) | Ponto de entrada |
+| [src/svz/](src/svz/) | Código do jogo, incluindo [estado da batalha](src/svz/battle.py), [ondas](src/svz/waves.py) e [conteúdo das regiões](src/svz/content.py) |
+| [assets/](assets/) | Imagens e sons |
+| [tests/](tests/) e [tools/](tools/) | Testes, validação e empacotamento |
+| [web/](web/) | Geração da versão para navegador e publicação no GitHub Pages |
 
-## Desenvolvimento
+O Pygame-CE cuida da janela, dos controles e do áudio. No Windows, a renderização por software é padrão e o OpenGL é opcional. As dependências estão em [requirements.txt](requirements.txt).
 
-- [Guia de desenvolvimento, testes e build](docs/DESENVOLVIMENTO.md)
+## Documentação
+
+- [Desenvolvimento, testes e build](docs/DESENVOLVIMENTO.md)
 - [Como contribuir](CONTRIBUTING.md) e [organização da equipe](docs/ORGANIZACAO_EQUIPE.md)
-- [Histórico de versões](CHANGELOG.md) e [integração da versão 1.6.0](docs/INTEGRACAO_1.6.0.md)
-- [Créditos](CREDITOS.md) e [licença](LICENSE)
+- [Histórico dos repositórios](docs/HISTORICO_REPOSITORIOS.md), [créditos](CREDITOS.md) e [licença MIT](LICENSE)
