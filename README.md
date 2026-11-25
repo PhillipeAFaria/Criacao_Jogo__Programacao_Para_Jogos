@@ -1,90 +1,30 @@
 # Fábrica dos Mortos
 
-Jogo de estratégia 2D em Python/Pygame-CE, com três regiões, quatro faixas,
-oito cartas por região e campanha de 12 ondas. Inclui retomada de partida,
-perfil local, ranking e loja de consumíveis.
+Jogo de estratégia 2D em Python e Pygame-CE. Posicione tropas em quatro faixas para defender sua base contra 12 ondas de zumbis. A campanha tem três regiões, com oito cartas por região.
 
-**Estado:** Alfa da Beta 5 integrada, versão técnica **1.6.0**. Combina a
-estrutura modular, perfis e loja com as melhorias de jogabilidade da 1.5.3.
-Construção local; nenhuma release foi publicada no GitHub.
+**[Jogar no navegador](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png)
 
-## Jogar no navegador
+## Executar no Windows
 
-**[Abrir Fábrica dos Mortos](https://phillipeafaria.github.io/Criacao_Jogo__Programacao_Para_Jogos/)** · [QR Code](web/QR_Code/Fabrica_dos_Mortos_QR_identificado.png) · [Atualizar publicação](web/README.md)
+1. Baixe ou clone este repositório e instale o **Python 3.12 x64** com o Python Launcher (`py`).
+2. Na pasta do repositório, execute [PREPARAR_AMBIENTE.bat](PREPARAR_AMBIENTE.bat) uma vez para instalar as dependências. Essa etapa requer internet.
+3. Execute [JOGAR.bat](JOGAR.bat).
 
-A versão web está publicada no GitHub Pages. Chrome foi testado com emulação
-móvel; validação em celular físico ainda está pendente. Os saves web pertencem ao
-navegador e são separados da versão Windows.
+Use o mouse para escolher cartas e posicionar tropas. Pressione **P** para pausar, **F5** para salvar e **F11** para alternar a tela cheia. Os saves do navegador e do Windows são independentes.
 
-## Trabalho em equipe
+## Encontrar o código
 
-Este é o repositório atual de uma equipe de sete integrantes. Use uma Issue por
-tarefa, branch curta e Pull Request para `main`. Comece por:
+| Onde | O que contém |
+| --- | --- |
+| [`main.py`](main.py) | Ponto de entrada do jogo |
+| [`src/svz/`](src/svz/) | Código do jogo, incluindo menus, campanha e combate |
+| [`assets/`](assets/) | Imagens e sons |
+| [`tests/`](tests/) e [`tools/`](tools/) | Testes, validação e empacotamento |
+| [`docs/`](docs/) e [`web/`](web/) | Documentação e arquivos da versão web |
 
-- [Como contribuir](CONTRIBUTING.md)
-- [Organização, revisão e responsabilidades](docs/ORGANIZACAO_EQUIPE.md)
-- [Histórico dos três repositórios](docs/HISTORICO_REPOSITORIOS.md)
+## Desenvolvimento
 
-## Jogar no Windows
-
-1. Instale Python **3.12 x64**, com o Python Launcher (`py`).
-2. Execute `PREPARAR_AMBIENTE.bat` uma vez (requer internet).
-3. Execute `JOGAR.bat`.
-
-O código usa renderização por software por padrão. OpenGL é opcional:
-defina `SVZ_RENDERER=opengl` antes de abrir o jogo. Para jogar sem instalar Python, use o pacote Windows em `dist/` após a
-construção. Na árvore de desenvolvimento, `JOGAR.bat` executa os fontes;
-`SoldadosVsZumbis.exe` executa a construção local. `CRIAR_EXE.bat` recompila.
-
-## Controles principais
-
-- Mouse: menus, cartas e posicionamento de tropas.
-- P: pausar; Esc: voltar ao menu; F5: salvar; F11: tela cheia.
-- H: selecionar kit médico; T: selecionar munição tática. Clique na tropa;
-  Esc cancela. Compre os itens no perfil/loja antes da batalha.
-- Modo teclado e remapeamento: disponíveis em Configurações.
-- A retomada usa o perfil ativo para os próximos pontos e consumíveis.
-
-Campanha, perfil, pontuação e preferências ficam em
-`%LOCALAPPDATA%\SoldadosVsZumbis-Beta5`. No primeiro uso, se essa pasta ainda
-não existir, os dados da pasta antiga `SoldadosVsZumbis` são copiados sem alterar
-os originais. Não há sincronização posterior entre as versões. Falhas são
-registradas em `jogo.log` na pasta nova.
-
-## Melhorias integradas
-
-- Cinco segundos de preparação antes do primeiro zumbi; pausa e retomada preservam o contador.
-- Reserva de suprimentos sem teto; geradores e recompensas entregam o valor completo.
-- Vida e dano fixos por tipo de inimigo, preservando os ajustes por dificuldade.
-- Leitura de partidas nos schemas 1, 2 e 3, com gravação no schema 4.
-
-## Organização
-
-| Pasta | Conteúdo |
-|---|---|
-| `src/svz/` | Código do jogo |
-| `assets/` | Imagens, sons e manifesto de integridade |
-| `tests/` | Testes automatizados |
-| `tools/` | Verificação, diagnóstico, benchmark e build |
-| `docs/` | Guias atuais e relatório da revisão |
-| `docs/historico/` | Relatórios e evidências de versões anteriores |
-| `licenses/` | Licenças das dependências |
-| `web/` | Pacote publicado, manifesto, QR Codes e instruções do Pages |
-| `.github/` | Modelos de tarefas/PR e verificações automáticas |
-| `reports/` | Saídas locais de validação e backup anterior à revisão |
-
-Não mova `assets/` nem altere sua estrutura sem atualizar as referências.
-Ambientes `.venv/`, builds e relatórios são locais e ignorados pelo Git.
-
-## Documentação
-
-- [Desenvolvimento e validação](docs/DESENVOLVIMENTO.md)
-- [Integração da 1.5.3 e migração de dados](docs/INTEGRACAO_1.6.0.md)
-- [Análise anterior da Alfa](docs/REVISAO_2026-10-30.md)
-- [Histórico de alterações](CHANGELOG.md)
-- [Contribuição](docs/CONTRIBUTING.md)
+- [Guia de desenvolvimento, testes e build](docs/DESENVOLVIMENTO.md)
+- [Como contribuir](CONTRIBUTING.md) e [organização da equipe](docs/ORGANIZACAO_EQUIPE.md)
+- [Histórico de versões](CHANGELOG.md) e [integração da versão 1.6.0](docs/INTEGRACAO_1.6.0.md)
 - [Créditos](CREDITOS.md) e [licença](LICENSE)
-
-Os relatórios antigos são referências históricas, não evidência de aprovação
-da cópia atual. Os resultados novos ficam em `reports/quality/latest.json`.
-
